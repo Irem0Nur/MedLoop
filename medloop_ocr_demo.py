@@ -227,36 +227,59 @@ GS_SEPARATOR = "\x1d"
 
 
 def parse_gs1_element_string(raw: str) -> dict:
-    """Karekoddan çözülen ham GS1 element string'ini (ör. '01086995690400712106...')
-    Application Identifier'lara göre ayrıştırır. Alan sırası kutudan kutuya
-    değişebilir; bu yüzden AI kodunu okuyup ilgili uzunluk kuralını uyguluyoruz."""
-    fields: dict[str, str] = {}
-    s = raw
-    # Bazı tarayıcılar başa FNC1/']d2' gibi sembolojiler ekler — sayısal olmayan
-    # baştaki karakterleri temizle.
-    s = re.sub(r"^[^\d]+", "", s)
+    """Karekoddan çözülen ham GS1 element string'ini Application Identifier'lara
+    göre ayrıştırır. GS1 standardında değişken uzunluklu alanlar (10, 21) normalde
+    bir GS (\\x1d) ayraç karakteriyle bitmelidir, ancak bazı üreticiler bu ayracı
+    basmıyor/kaybediyor — bu durumda AI 17'nin (SKT, sabit 6 haneli ve geçerli bir
+    ay içermesi gereken) konumu bir "çapa" olarak kullanılır: 21 alanı bu çapaya
+    kadar, 10 alanı ise çapadan sonraki 10'dan itibaren string sonuna kadar okunur."""
+    s = re.sub(r"^[^\d]+", "", raw)  # baştaki FNC1/']d2' gibi sembolleri temizle
 
-    i = 0
-    while i < len(s):
-        ai = s[i:i + 2]
-        if ai not in GS1_AI_TABLE:
-            # Tanımadığımız/3-4 haneli bir AI olabilir; ilerleyip dene
-            i += 1
-            continue
-        length, fixed = GS1_AI_TABLE[ai]
-        i += 2
-        if fixed:
-            value = s[i:i + length]
-            i += length
-        else:
-            end = s.find(GS_SEPARATOR, i)
-            if end == -1:
-                value = s[i:i + length]
-                i += len(value)
+    fields: dict[str, str] = {}
+
+    # 1) GTIN her zaman baştadır ve sabit uzunlukludur.
+    m01 = re.match(r"01(\d{14})", s)
+    if not m01:
+        return fields
+    fields["01"] = m01.group(1)
+    rest = s[m01.end():]
+
+    # 2) SKT (17) alanını, ayraç olmasa bile geçerli bir tarih olacak şekilde ara.
+    #    (17)(YY)(01-12)(01-31) — ay/gün aralığını doğrulayarak yanlış eşleşmeyi azaltır.
+    m17 = re.search(r"17(\d{2})(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])", rest)
+
+    if rest.startswith("21") and m17:
+        # 21 alanı, 17 çapasına kadar olan kısımdır (ayraç varsa zaten orada keser).
+        seri_raw = rest[2:m17.start()]
+        seri = seri_raw.split(GS_SEPARATOR)[0]
+        fields["21"] = seri
+        after_date = rest[m17.end():]
+        fields["17"] = m17.group(1) + m17.group(2) + m17.group(3)
+        # 3) 10 alanı, tarihten sonra gelir; ayraç varsa ona kadar, yoksa sona kadar.
+        m10 = re.match(r"10(.+)$", after_date)
+        if m10:
+            fields["10"] = m10.group(1).split(GS_SEPARATOR)[0]
+    else:
+        # Ayraçlı/standart durum için genel amaçlı ayrıştırmaya düş.
+        i = 0
+        while i < len(rest):
+            ai = rest[i:i + 2]
+            if ai not in GS1_AI_TABLE:
+                i += 1
+                continue
+            length, fixed = GS1_AI_TABLE[ai]
+            i += 2
+            if fixed:
+                fields[ai] = rest[i:i + length]
+                i += length
             else:
-                value = s[i:end]
-                i = end + 1
-        fields[ai] = value
+                end = rest.find(GS_SEPARATOR, i)
+                if end == -1:
+                    fields[ai] = rest[i:i + length]
+                    i += len(fields[ai])
+                else:
+                    fields[ai] = rest[i:end]
+                    i = end + 1
     return fields
 
 
@@ -275,13 +298,26 @@ def format_gs1_date(yymmdd: str) -> str | None:
 
 def detect_karekod(bgr_img: np.ndarray) -> dict | None:
     """Karekodu (DataMatrix) pylibdmtx ile okuyup GS1 alanlarını ayrıştırır.
-    Bulunursa: gtin, skt, parti_no, seri_no, ham alanlarını döndürür."""
+    Bulunursa: gtin, skt, parti_no, seri_no, ham alanlarını döndürür.
+    Karekod genelde fotoğrafın küçük bir bölgesini kapladığından, tam görüntüye
+    ek olarak kutuya kırpılmış + büyütülmüş versiyonlar da denenir — bu, uzaktan
+    veya geniş kadrajla çekilmiş fotoğraflarda okuma başarısını artırır."""
     gray = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2GRAY)
-    # Kontrastı artırmak DataMatrix modüllerinin ayrışmasına yardımcı olabilir
     clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
     enhanced = clahe.apply(gray)
 
-    for candidate in (gray, enhanced):
+    cropped_bgr = detect_and_crop_box(bgr_img)
+    cropped_gray = cv2.cvtColor(cropped_bgr, cv2.COLOR_BGR2GRAY)
+    cropped_enh = clahe.apply(cropped_gray)
+
+    candidates = []
+    for scale in (3.0, 2.0):
+        candidates.append(cv2.resize(cropped_gray, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC))
+        candidates.append(cv2.resize(cropped_enh, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC))
+    candidates.append(gray)
+    candidates.append(enhanced)
+
+    for candidate in candidates:
         for angle in (0, 90, 180, 270):
             if angle == 0:
                 rotated = candidate
@@ -292,7 +328,7 @@ def detect_karekod(bgr_img: np.ndarray) -> dict | None:
             else:
                 rotated = cv2.rotate(candidate, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
-            results = dmtx_decode(rotated, timeout=3000)
+            results = dmtx_decode(rotated, timeout=2000, max_count=1)
             if results:
                 raw = results[0].data.decode("utf-8", errors="replace")
                 fields = parse_gs1_element_string(raw)
