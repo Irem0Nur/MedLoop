@@ -1,16 +1,16 @@
 [
   {
     "dosya": "1786123811367_image.png",
-    "tanimlama_kaynagi": "barkod",
-    "gtin": "8699772350493",
+    "tanimlama_kaynagi": "karekod",
+    "gtin": "08699772350493",
     "parti_no": null,
-    "seri_no": null,
+    "seri_no": "4600000103730572",
     "skt": null,
     "skt_kaynagi": null,
-    "ilac_adi_tahmini": "WEE",
-    "farmasotik_form": null,
-    "guven_skoru_toplam": 997,
-    "ham_metin_onizleme": "— a rr, MA... — : Po Si o i im = ® 7 z ki Harizen tullandır. Regate ile wale oy iğ aes di , Fito WEE . Beklenmeyen bir etki görüldüğünde ah | ek MİN a rem v yer toledo ys ey 88997 72N350408 Çi ik Vulgare Sulu Ekstresi Üre nde ode manktığda sakla e... | a ii ee ‘ ra Keme ee ee"
+    "ilac_adi_tahmini": "FITO 50 MG/G KREM (40 GR)",
+    "farmasotik_form": "krem",
+    "guven_skoru_toplam": 0,
+    "ham_metin_onizleme": "(01)08699772350493 (21)4600000103730572"
   },
   {
     "dosya": "1786123822570_image.png",
@@ -23,20 +23,20 @@
     "ilac_adi_tahmini": "RANEKS",
     "farmasotik_form": "enterik tablet",
     "guven_skoru_toplam": 1874,
-    "ham_metin_onizleme": "28 Mir Tablet im RANEKS® 20 Ruhsat Numarası : 03.06.2009-219/41 bilim Enterik Tablet > JE, Ruhsat Sahibi o : BİLİM İLAÇ SAN. ve TİC. A.Ş. muse Rabeprazol Sodyum 34440 Beyoğlu - İSTANBUL Kullanma tliat Üretim Yeri : BİLİM İLAÇ SAN. ve TİC. A.Ş. okumadan araç/makine GOSB 41480 Gebze - KOCAELİ 8 169956"
+    "ham_metin_onizleme": "28 Mir Tablet im RANEKS® 20 Ruhsat Numarası : 03.06.2009-219/41 bilim Enterik Tablet > JE, Ruhsat Sahibi o : BİLİM İLAÇ SAN. ve TİC. A.Ş. muse Rabeprazol Sodyum 34440 Beyoğlu - İSTANBUL Kullanma tliat Üretim Yeri : BİLİM İLAÇ SAN. ve TİC. A.Ş. GOSB 41480 Gebze - KOCAELİ 8 169956"
   },
   {
     "dosya": "1786123836395_image.png",
-    "tanimlama_kaynagi": "barkod",
-    "gtin": "8699514092377",
-    "parti_no": null,
-    "seri_no": null,
-    "skt": null,
-    "skt_kaynagi": null,
-    "ilac_adi_tahmini": null,
-    "farmasotik_form": null,
+    "tanimlama_kaynagi": "karekod",
+    "gtin": "08699514092377",
+    "parti_no": "26A705",
+    "seri_no": "27433043564985",
+    "skt": "31.12.2028",
+    "skt_kaynagi": "ambalaj",
+    "ilac_adi_tahmini": "ORNISID FORT 500 MG 10 FILM KAPLI TABLET",
+    "farmasotik_form": "film kaplı tablet",
     "guven_skoru_toplam": 0,
-    "ham_metin_onizleme": "| d 1 Se | fruit q 4 q ” ¢ A | of : a / if - a — ! Ig"
+    "ham_metin_onizleme": "(01)08699514092377 (21)27433043564985 SKT: 12/2028 Parti No: 26A705"
   },
   {
     "dosya": "1786134888344_raneks_karekod.jpeg",
@@ -46,7 +46,7 @@
     "seri_no": "16000050471491",
     "skt": "31.01.2027",
     "skt_kaynagi": "karekod",
-    "ilac_adi_tahmini": "BAP",
+    "ilac_adi_tahmini": "RANEKS",
     "farmasotik_form": null,
     "guven_skoru_toplam": 302,
     "ham_metin_onizleme": "iu ği o & ’ : - : ; we) — d | % Ae p = ue i Ae 1s = 3 ane a = Sox = 4 kafir gi = ne © BAP 5 wa S wes O boo 2 oc 4 | ams Mü S N BBs : sof | | > 7 \" 3 — ; F ) ye r ‘ J"
