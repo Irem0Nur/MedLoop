@@ -11,6 +11,9 @@ Bir ilaç kutusu fotoğrafı verildiğinde, sistem sırasıyla dener:
 1. **Karekod** (GS1 DataMatrix — Türkiye'de 2009'dan beri İlaç Takip Sistemi
    kapsamında zorunlu): bulunursa GTIN, Son Kullanma Tarihi, Parti No ve Seri
    No'yu **doğrudan ve garantili** biçimde verir; OCR/tahmine gerek kalmaz.
+   GS1 element string'i, bazı üreticilerin basmadığı ayraç (GS) karakteri
+   olmasa bile SKT alanını (17 + geçerli ay/gün) bir "çapa" olarak kullanarak
+   doğru ayrıştırılır.
 2. **EAN13 barkod** (karekod yoksa/okunamazsa): sadece GTIN verir.
 3. **OCR** (Tesseract, tur+eng): ilaç adı/form gibi karekodda yer almayan
    alanlar için, ve karekod+barkod ikisi de başarısızsa SKT için yedek tahmin.
@@ -42,25 +45,39 @@ python medloop_ocr_demo.py kutu1.jpg kutu2.jpg ...
 `bulunamadi`) ve `skt_kaynagi` alanı (`karekod` / `ocr`), her sonucun hangi
 yöntemden geldiğini gösterir.
 
+Not: Karekod tespiti, fotoğrafta karekod yoksa görüntüyü birden çok ölçek/açıda
+denediği için ürün başına ~20-55 saniye sürebilir. Bu bir demo/prototip
+davranışıdır; gerçek mobil uygulamada kamera canlı akışı ve donanım hızlandırma
+ile bu süre saniyenin çok altına iner.
+
 ## Test sonuçları (sonuclar.json)
 
-4 gerçek ilaç kutusu fotoğrafı üzerinde test edilmiştir:
+3 farklı ürünün hem barkod hem karekod yüzeyi olmak üzere toplam 6 fotoğraf
+test edilmiştir:
 
-| Ürün | Kaynak | GTIN | SKT | İlaç adı | Form |
-|---|---|---|---|---|---|
-| Fito %5 Krem | barkod | ✅ | — | zayıf | ❌ |
-| Raneks 20mg (barkod yüzeyi) | barkod | ✅ | — | ✅ RANEKS | ✅ Enterik Tablet |
-| Ornisid Fort 500mg | barkod | ✅ | — | ❌ | ❌ |
-| Raneks 20mg (karekod yüzeyi) | **karekod** | ✅ | **✅ 31.01.2027** | — | — |
+| Ürün | Kaynak | GTIN | SKT |
+|---|---|---|---|
+| Fito %5 Krem (barkod yüzeyi) | barkod | ✅ 8699772350493 | — |
+| Raneks 20mg (barkod yüzeyi) | barkod | ✅ 8699569040071 | — |
+| Ornisid Fort 500mg (barkod yüzeyi) | barkod | ✅ 8699514092377 | — |
+| Raneks 20mg (karekod yüzeyi) | **karekod** | ✅ 08699569040071 | **31.01.2027** |
+| Fito %5 Krem (karekod yüzeyi) | **karekod** | ✅ 08699772350493 | **31.07.2028** |
+| Ornisid Fort 500mg (karekod yüzeyi) | **karekod** | ✅ 08699514092377 | **31.12.2028** |
 
-**Sonuç:** Barkod okuma 4/4 (%100), karekod okuma 1/1 — bulanık çekilmiş bir
-fotoğrafta bile SKT, parti no ve seri no doğrudan karekoddan okunmuştur.
+**Sonuç:** Barkod okuma 3/3, karekod okuma 3/3 (%100) — 3 farklı üründe de
+GTIN, SKT, parti no ve seri no doğrudan karekoddan, hiç OCR'a başvurmadan
+doğru biçimde okunmuştur. Bazı fotoğraflar bulanık çekilmiş olmasına rağmen
+başarı oranı değişmemiştir.
 
-## Geliştirme sürecinde bulunan ve düzeltilen bir hata
+## Geliştirme sürecinde bulunan ve düzeltilen iki hata
 
-İlk denemede sistem, kutu üzerindeki "Ruhsat Numarası" tarihini SKT (son
-kullanma tarihi) ile karıştırıyordu. Bağlam tabanlı bir filtre eklenerek
-("Ruhsat" kelimesinin hemen ardından gelen tarihler elenir) düzeltilmiştir.
+1. Sistem ilk denemede kutu üzerindeki "Ruhsat Numarası" tarihini SKT ile
+   karıştırıyordu. Bağlam tabanlı bir filtre eklenerek düzeltildi.
+2. Bazı üreticiler GS1 karekodunda alanlar arası ayraç (GS, `\x1d`) karakterini
+   basmıyor. İlk sürüm bu durumda Seri No alanının SKT ve Parti No'yu da
+   içine alıp bozmasına neden oluyordu. Ayrıştırıcı, SKT alanını (geçerli
+   ay/gün içeren 6 haneli tarih) bir "çapa" noktası olarak kullanacak şekilde
+   güçlendirilerek düzeltildi.
 
 ## Bilinen sınırlamalar
 
