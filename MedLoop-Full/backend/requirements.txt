@@ -1,0 +1,8 @@
+flask
+flask-cors
+pytesseract
+pillow
+opencv-python-headless
+pyzbar
+pylibdmtx
+numpy

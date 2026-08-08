@@ -1,0 +1,92 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------ */
+/* MedLoop tasarım token'ları (video kayıttaki mockup'tan örneklendi)  */
+/* ------------------------------------------------------------------ */
+@theme {
+  --font-display: "Poppins", "Inter", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
+
+  /* Açık tema — nane yeşili / cam (glass) yüzeyler */
+  --color-mint-50: #f2fbf5;
+  --color-mint-100: #e2f4e8;
+  --color-mint-200: #cbe9d5;
+  --color-mint-300: #a9d9bc;
+
+  /* Marka yeşili — butonlar, aktif tab, vurgular */
+  --color-forest-500: #2d7d59;
+  --color-forest-600: #1e6b4c;
+  --color-forest-700: #17573f;
+  --color-forest-900: #0e2e20;
+
+  /* Karanlık mod (Gece Modu) zemin tonları */
+  --color-night-900: #0c2318;
+  --color-night-800: #143a28;
+  --color-night-700: #1c4a33;
+
+  /* Durum / rozet renkleri */
+  --color-amber-400: #cf9b3f;
+  --color-amber-100: #f6ecd6;
+  --color-rose-500: #c15a5e;
+  --color-rose-100: #f6e2e2;
+  --color-sage-400: #6fb98d;
+  --color-sage-100: #dcf1e3;
+
+  --shadow-glass: 0 8px 32px rgba(14, 46, 32, 0.12);
+
+  --animate-scan-line: scan-line 1.8s ease-in-out infinite;
+}
+
+@keyframes scan-line {
+  0% { top: 6%; opacity: 0; }
+  15% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { top: 94%; opacity: 0; }
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--color-mint-50);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+/* Cam (glassmorphism) kart yüzeyi — mockup'taki yarı saydam kartlar */
+.glass-card {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: var(--shadow-glass);
+}
+
+.app-shell {
+  width: 100%;
+  max-width: 480px;
+  margin-inline: auto;
+  min-height: 100dvh;
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(120% 90% at 50% 0%, #d9f0e0 0%, var(--color-mint-50) 45%, var(--color-mint-100) 100%);
+}
+
+/* Erişilebilirlik: azaltılmış hareket tercih edenler için */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Klavye odak halkası — her zaman görünür kalmalı */
+:focus-visible {
+  outline: 2px solid var(--color-forest-500);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
