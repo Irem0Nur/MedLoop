@@ -1,1 +1,7 @@
  node_modules/ __pycache__/ venv/ *.pyc .env
+MedLoop-Full/frontend/node_modules/
+MedLoop-Full/frontend/dist/
+MedLoop-Full/backend/venv/
+MedLoop-Full/backend/__pycache__/
+MedLoop-Full/backend/*.pyc
+MedLoop-Full/frontend/.env
