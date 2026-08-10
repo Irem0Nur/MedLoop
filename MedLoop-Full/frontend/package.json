@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@capacitor-community/camera-preview": "^8.0.1",
+    "@capacitor/camera": "^8.2.2",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },

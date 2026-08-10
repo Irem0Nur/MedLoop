@@ -90,3 +90,7 @@ body {
   outline-offset: 2px;
   border-radius: 8px;
 }
+body.camera-preview-active,
+body.camera-preview-active #root {
+  background: transparent !important;
+}
