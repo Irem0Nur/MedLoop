@@ -86,3 +86,7 @@ başarı oranı değişmemiştir.
 - GTIN'i ilaç adı/etken madde bilgisine dönüştürmek için (herhangi bir ilaç
   için, sadece test edilenler için değil) TİTCK/SGK referanslı bir veri
   kaynağına entegrasyon gerekir — bu sonraki geliştirme fazının kapsamındadır.
+
+## 🚀 Canlı Bağlantılar 
+- **Uygulama (Frontend):** https://medloop-full-frontend.onrender.com 
+- **Backend API:** https://medloop.onrender.com > Not: Ücretsiz Render planı kullanıldığı için, uzun süre kullanılmazsa servisler uykuya geçer. İlk istek 30-50 saniye kadar gecikebilir, bu normaldir.
