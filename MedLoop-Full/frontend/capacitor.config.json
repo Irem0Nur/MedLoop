@@ -1,5 +1,9 @@
 {
   "appId": "com.medloop.app",
   "appName": "MedLoop",
-  "webDir": "dist"
+  "webDir": "dist",
+  "server": {
+    "url": "https://medloop-full-frontend.onrender.com",
+    "cleartext": true
+  }
 }
