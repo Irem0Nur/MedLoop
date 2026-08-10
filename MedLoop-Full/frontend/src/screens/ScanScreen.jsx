@@ -151,7 +151,6 @@ export default function ScanScreen({ onBack, onScanSuccess }) {
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            capture="environment"
             className="hidden"
             onChange={handleFilePicked}
           />
