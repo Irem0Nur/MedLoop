@@ -15,6 +15,7 @@
   --color-mint-300: #a9d9bc;
 
   /* Marka yeşili — butonlar, aktif tab, vurgular */
+  --color-forest-300: #6fae87;
   --color-forest-500: #2d7d59;
   --color-forest-600: #1e6b4c;
   --color-forest-700: #17573f;
@@ -84,16 +85,6 @@ body {
   }
 }
 
-/* Klavye odak halkası — her zaman görünür kalmalı */
-:focus-visible {
-  outline: 2px solid var(--color-forest-500);
-  outline-offset: 2px;
-  border-radius: 8px;
-}
-body.camera-preview-active,
-body.camera-preview-active #root {
-  background: transparent !important;
-}
 /* Yakındaki eczaneler gibi yatay kaydırmalı satırlarda tarayıcı
    scrollbar'ını gizler — kaydırma işlevi (touch/wheel) etkilenmez. */
 .no-scrollbar {
@@ -102,4 +93,128 @@ body.camera-preview-active #root {
 }
 .no-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+/* Klavye odak halkası — her zaman görünür kalmalı */
+:focus-visible {
+  outline: 2px solid var(--color-forest-500);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+/* ------------------------------------------------------------------ */
+/* AÇIK TEMA VARYASYONLARI — Profil > Tema'dan seçilir (bkz.            */
+/* src/data/themes.js). Tasarımın kendisi (cam kartlar, degrade         */
+/* butonlar, boşluklar) hiç değişmez; sadece mint- ve forest- renk      */
+/* skalaları yeniden tanımlanır. Gece Modu açıkken bu temalar geçersiz  */
+/* kalır — .dark bloğu CSS'te daha sonra tanımlandığı için kazanır.     */
+/* ------------------------------------------------------------------ */
+.theme-amber {
+  --color-mint-50: #fffaf0;
+  --color-mint-100: #fff2d9;
+  --color-mint-200: #ffe8b8;
+  --color-mint-300: #ffdb8f;
+  --color-forest-300: #f6c76b;
+  --color-forest-500: #e0a530;
+  --color-forest-600: #c98d1e;
+  --color-forest-700: #8a5f14;
+  --color-forest-900: #4d3308;
+}
+.theme-amber .app-shell {
+  background: radial-gradient(120% 90% at 50% 0%, #ffedc2 0%, var(--color-mint-50) 45%, var(--color-mint-100) 100%);
+}
+
+.theme-sky {
+  --color-mint-50: #f0f7ff;
+  --color-mint-100: #dcebff;
+  --color-mint-200: #bfdcff;
+  --color-mint-300: #97c6ff;
+  --color-forest-300: #7fb3f0;
+  --color-forest-500: #4a8fe0;
+  --color-forest-600: #3576c9;
+  --color-forest-700: #295a99;
+  --color-forest-900: #16324f;
+}
+.theme-sky .app-shell {
+  background: radial-gradient(120% 90% at 50% 0%, #d6e9ff 0%, var(--color-mint-50) 45%, var(--color-mint-100) 100%);
+}
+
+.theme-peach {
+  --color-mint-50: #fff5f5;
+  --color-mint-100: #ffe4e6;
+  --color-mint-200: #ffccd2;
+  --color-mint-300: #ffabb7;
+  --color-forest-300: #f596a8;
+  --color-forest-500: #e2648a;
+  --color-forest-600: #cc4770;
+  --color-forest-700: #93304f;
+  --color-forest-900: #4f1a2a;
+}
+.theme-peach .app-shell {
+  background: radial-gradient(120% 90% at 50% 0%, #ffdde1 0%, var(--color-mint-50) 45%, var(--color-mint-100) 100%);
+}
+
+.theme-lilac {
+  --color-mint-50: #f8f5ff;
+  --color-mint-100: #ede4ff;
+  --color-mint-200: #dcc9ff;
+  --color-mint-300: #c5a8ff;
+  --color-forest-300: #b18ef0;
+  --color-forest-500: #9163db;
+  --color-forest-600: #7847c2;
+  --color-forest-700: #563390;
+  --color-forest-900: #2f1a4f;
+}
+.theme-lilac .app-shell {
+  background: radial-gradient(120% 90% at 50% 0%, #ebe0ff 0%, var(--color-mint-50) 45%, var(--color-mint-100) 100%);
+}
+
+/* ------------------------------------------------------------------ */
+/* GECE MODU — <html> üzerine .dark class'ı eklenince devreye girer.   */
+/* Lacivert/gece mavisi zemin + canlı zümrüt yeşili vurgular.          */
+/* Marka/renk token'ları CSS değişkeni olduğu için, burada sadece      */
+/* değişkenleri yeniden tanımlamak yetiyor; tüm ekranlardaki           */
+/* text-forest-900, bg-mint-50 vb. utility class'lar otomatik güncellenir. */
+/* ------------------------------------------------------------------ */
+html.dark {
+  /* Zemin — düz koyu yeşil değil, mavimsi lacivert tonlar */
+  --color-mint-50: #0a0e1a;
+  --color-mint-100: #121a2c;
+  --color-mint-200: #1b2540;
+  --color-mint-300: #2a3757;
+
+  /* Vurgular — birbirinden farklı, canlı zümrüt/nane yeşili tonları */
+  --color-forest-300: #6ee7b7;
+  --color-forest-500: #34d399;
+  --color-forest-600: #10b981;
+  --color-forest-700: #dbe7f5;
+  --color-forest-900: #f8fafc;
+
+  /* Rozet renkleri de biraz daha canlı — "sadece yeşil" hissini kırar */
+  --color-amber-400: #fbbf24;
+  --color-amber-100: #3a2f14;
+  --color-rose-500: #f87171;
+  --color-rose-100: #3a1a1c;
+  --color-sage-400: #6ee7b7;
+  --color-sage-100: #143327;
+
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+html.dark .app-shell {
+  background: radial-gradient(130% 90% at 50% 0%, #1e2f52 0%, var(--color-mint-50) 45%, #05070d 100%);
+}
+
+html.dark .glass-card {
+  background: rgba(148, 178, 225, 0.06);
+  border: 1px solid rgba(148, 178, 225, 0.14);
+}
+
+/* Koyu modda butonlar/rozetler düz yeşil yerine hafif degrade — daha şık */
+html.dark .bg-forest-600 {
+  background: linear-gradient(135deg, #10b981 0%, #0d9488 100%);
+}
+
+.app-shell,
+.glass-card {
+  transition: background-color 0.25s ease, background 0.25s ease, border-color 0.25s ease;
 }
