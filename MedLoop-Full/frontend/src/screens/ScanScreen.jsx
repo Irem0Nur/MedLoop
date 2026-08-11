@@ -92,7 +92,7 @@ export default function ScanScreen({ onBack, onScanSuccess }) {
             <ScanTargetIcon />
           </button>
           <button type="button" onClick={() => fileInputRef.current?.click()} aria-label="Galeriden seç"
-            className="w-12 h-12 rounded-full bg-forest-600 backdrop-blur flex items-center justify-center text-white">
+            className="w-12 h-12 rounded-full bg-pink-500 backdrop-blur flex items-center justify-center text-white">
             <ImageIcon />
           </button>
           <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFilePicked} />
