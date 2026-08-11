@@ -11,7 +11,7 @@ const STATUS_TEXT = {
   failed: 'TANINAMADI, TEKRAR DENEYİN',
 }
 
-export default function ScanScreen({ onBack, onScanSuccess }) {
+export default function ScanScreen({ onBack, onScanSuccess, onNavigate }) {
   const { status: cameraStatus, captureFrame, retry } = useCamera()
   const [scanStatus, setScanStatus] = useState('waiting')
   const fileInputRef = useRef(null)
@@ -99,7 +99,7 @@ export default function ScanScreen({ onBack, onScanSuccess }) {
         </div>
       )}
 
-      <BottomNav active="scan" />
+      <BottomNav active="scan" onNavigate={onNavigate} />
     </div>
   )
 }

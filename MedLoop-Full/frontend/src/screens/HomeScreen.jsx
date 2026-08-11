@@ -5,7 +5,7 @@ import BottomNav from '../components/BottomNav.jsx'
  * gösterebilmek için eklenen minimal bir taslaktır — asıl ana sayfa
  * tasarımı ayrı bir iş kalemi olarak ele alınmalı.
  */
-export default function HomeScreen({ medicines, onScan }) {
+export default function HomeScreen({ medicines, onScan, onNavigate }) {
   return (
     <div className="app-shell flex flex-col">
       <header className="relative z-10 px-5 pt-6 flex items-center justify-between">
@@ -34,7 +34,7 @@ export default function HomeScreen({ medicines, onScan }) {
           <div className="glass-card rounded-2xl p-6 text-center">
             <p className="text-sm text-forest-900 font-medium">Dolabın henüz boş.</p>
             <p className="text-xs text-forest-700/60 mt-1">
-              İlk ilacını eklemek için “İlaç Tara”ya dokun.
+              İlk ilacını eklemek için "İlaç Tara"ya dokun.
             </p>
           </div>
         ) : (
@@ -55,7 +55,7 @@ export default function HomeScreen({ medicines, onScan }) {
         )}
       </section>
 
-      <BottomNav active="home" onNavigate={(key) => key === 'scan' && onScan?.()} />
+      <BottomNav active="home" onNavigate={onNavigate} />
     </div>
   )
 }
