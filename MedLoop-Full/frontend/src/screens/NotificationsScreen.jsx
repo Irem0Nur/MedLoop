@@ -9,13 +9,18 @@ import { getExpiryStatus } from '../utils/expiry.js'
  *
  * @param {Set<string>} readIds - okundu işaretlenmiş bildirim id'leri (=ilaç id'si)
  * @param {(id: string) => void} onMarkRead
+ * @param {{ soonEnabled: boolean, expiredEnabled: boolean }} prefs - Profil >
+ *   Bildirim Ayarları'ndaki gerçek tercihler; kapatılan kategori burada
+ *   gerçekten görünmez olur.
  */
-export default function NotificationsScreen({ medicines, readIds, onMarkRead, onNavigate }) {
+export default function NotificationsScreen({ medicines, readIds, onMarkRead, onNavigate, prefs }) {
   const notifications = useMemo(() => {
     return medicines
       .map((m) => {
         const status = getExpiryStatus(m.expiryDate)
         if (status.key !== 'expired' && status.key !== 'soon') return null
+        if (status.key === 'expired' && !prefs.expiredEnabled) return null
+        if (status.key === 'soon' && !prefs.soonEnabled) return null
         return {
           id: m.id,
           medicineName: m.name,
@@ -32,7 +37,7 @@ export default function NotificationsScreen({ medicines, readIds, onMarkRead, on
       })
       .filter(Boolean)
       .sort((a, b) => a.daysLeft - b.daysLeft)
-  }, [medicines])
+  }, [medicines, prefs.soonEnabled, prefs.expiredEnabled])
 
   const unreadCount = notifications.filter((n) => !readIds.has(n.id)).length
 
