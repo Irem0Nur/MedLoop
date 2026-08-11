@@ -12,8 +12,10 @@
   "dependencies": {
     "@capacitor-community/camera-preview": "^8.0.1",
     "@capacitor/camera": "^8.2.2",
+    "leaflet": "^1.9.4",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "react-leaflet": "^5.0.0"
   },
   "devDependencies": {
     "@capacitor/android": "^8.5.0",

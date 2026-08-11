@@ -94,3 +94,12 @@ body.camera-preview-active,
 body.camera-preview-active #root {
   background: transparent !important;
 }
+/* Yakındaki eczaneler gibi yatay kaydırmalı satırlarda tarayıcı
+   scrollbar'ını gizler — kaydırma işlevi (touch/wheel) etkilenmez. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
