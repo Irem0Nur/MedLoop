@@ -24,7 +24,9 @@ import base64
 import gc
 import io
 import re
+import sys
 import tempfile
+import time
 from pathlib import Path
 
 from flask import Flask, request, jsonify
@@ -128,7 +130,10 @@ def scan():
         tmp_path = tmp.name
 
     try:
+        t0 = time.time()
         raw_result = run_ocr_pipeline(tmp_path)
+        elapsed = time.time() - t0
+        print(f"[TIMING] run_ocr_pipeline: {elapsed:.2f}s", file=sys.stderr, flush=True)
     except Exception as e:
         return jsonify({"error": f"OCR işlenemedi: {e}"}), 500
     finally:
