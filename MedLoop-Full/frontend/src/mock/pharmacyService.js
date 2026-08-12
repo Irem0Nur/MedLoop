@@ -5,9 +5,45 @@
 // satırı aynen çalışsın. İstersen sonra `src/services/pharmacyService.js`'e
 // taşıyıp import'u güncelleyebilirsin — işlevsel bir fark yaratmaz.
 
-const OVERPASS_ENDPOINT = 'https://overpass-api.de/api/interpreter'
+// Birden fazla halka açık Overpass sunucusu — biri rate-limit'e (429)
+// takılırsa veya cevap vermezse sırayla diğerleri denenir.
+const OVERPASS_ENDPOINTS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.openstreetmap.ru/api/interpreter',
+]
 const SEARCH_RADIUS_METERS = 3000
 const MAX_RESULTS = 12
+
+// Aynı konum için kısa süre içinde tekrar tekrar istek atmayı (ve bu
+// yüzden rate-limit yemeyi) önlemek için sonuçları tarayıcı oturumunda
+// (sessionStorage) birkaç dakika önbelleğe alıyoruz.
+const CACHE_TTL_MS = 5 * 60 * 1000 // 5 dakika
+const CACHE_PRECISION = 3 // ~110m hassasiyetle konum yuvarlama (önbellek anahtarı için)
+
+function getCacheKey(lat, lng) {
+  return `medloop-pharmacies:${lat.toFixed(CACHE_PRECISION)},${lng.toFixed(CACHE_PRECISION)}`
+}
+
+function readCache(key) {
+  try {
+    const raw = sessionStorage.getItem(key)
+    if (!raw) return null
+    const { timestamp, data } = JSON.parse(raw)
+    if (Date.now() - timestamp > CACHE_TTL_MS) return null
+    return data
+  } catch {
+    return null
+  }
+}
+
+function writeCache(key, data) {
+  try {
+    sessionStorage.setItem(key, JSON.stringify({ timestamp: Date.now(), data }))
+  } catch {
+    // sessionStorage dolu/kapalı olabilir — önbellek olmadan devam ederiz
+  }
+}
 
 // Basit gün kısaltması eşlemesi (opening_hours OSM formatı için)
 const DAY_CODES = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
@@ -82,6 +118,10 @@ export async function getNearbyPharmacies(position) {
   if (!position) return []
 
   const { lat, lng } = position
+  const cacheKey = getCacheKey(lat, lng)
+  const cached = readCache(cacheKey)
+  if (cached) return cached
+
   const query = `
     [out:json][timeout:15];
     (
@@ -91,25 +131,30 @@ export async function getNearbyPharmacies(position) {
     out center tags;
   `
 
-  let response
-  try {
-    response = await fetch(OVERPASS_ENDPOINT, {
-      method: 'POST',
-      body: query,
-    })
-  } catch (err) {
-    console.error('Overpass API isteği başarısız (ağ hatası):', err)
+  let data = null
+  let lastError = null
+
+  // Sunucuları sırayla dene — biri 429/hata verirse bir sonrakine geç.
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    try {
+      const response = await fetch(endpoint, { method: 'POST', body: query })
+      if (!response.ok) {
+        lastError = `${endpoint} -> HTTP ${response.status}`
+        continue
+      }
+      data = await response.json()
+      break
+    } catch (err) {
+      lastError = `${endpoint} -> ${err.message}`
+    }
+  }
+
+  if (!data) {
+    console.error('Tüm Overpass sunucuları başarısız oldu:', lastError)
     return []
   }
 
-  if (!response.ok) {
-    console.error('Overpass API hata döndürdü:', response.status)
-    return []
-  }
-
-  const data = await response.json()
-
-  return data.elements
+  const result = data.elements
     .map((el) => {
       const elLat = el.lat ?? el.center?.lat
       const elLng = el.lon ?? el.center?.lon
@@ -131,4 +176,7 @@ export async function getNearbyPharmacies(position) {
     })
     .filter(Boolean)
     .slice(0, MAX_RESULTS)
+
+  writeCache(cacheKey, result)
+  return result
 }
