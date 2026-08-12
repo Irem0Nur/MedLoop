@@ -21,12 +21,15 @@ endpoint'ine yollar. Bu dosya:
 """
 
 import base64
+import gc
+import io
 import re
 import tempfile
 from pathlib import Path
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from PIL import Image
 
 # medloop_ocr_demo.py aynı klasörde olduğu için doğrudan import edilebilir.
 from medloop_ocr_demo import run as run_ocr_pipeline
@@ -102,6 +105,23 @@ def scan():
     except Exception:
         return jsonify({"error": "Görsel çözümlenemedi (geçersiz base64)"}), 400
 
+    # Büyük telefon fotoğraflarını küçültüyoruz: Render'ın zayıf CPU'sunda
+    # her döndürme/büyütme denemesi görsel boyutuyla orantılı yavaşlıyor.
+    # Karekod/barkod okumak için 1400px yeterli, gereksiz büyük boyut sadece süreyi uzatıyor.
+    try:
+        img = Image.open(io.BytesIO(image_bytes))
+        img = img.convert("RGB")
+        max_side = 1000
+        if max(img.size) > max_side:
+            ratio = max_side / max(img.size)
+            new_size = (int(img.size[0] * ratio), int(img.size[1] * ratio))
+            img = img.resize(new_size, Image.LANCZOS)
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=88)
+        image_bytes = buf.getvalue()
+    except Exception:
+        pass  # küçültme başarısız olursa orijinal görselle devam et
+
     # medloop_ocr_demo.run() bir dosya yolu beklediği için geçici dosyaya yazıyoruz.
     with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
         tmp.write(image_bytes)
@@ -113,6 +133,11 @@ def scan():
         return jsonify({"error": f"OCR işlenemedi: {e}"}), 500
     finally:
         Path(tmp_path).unlink(missing_ok=True)
+        # Render'ın ücretsiz planında RAM çok sınırlı (512MB); tek worker
+        # birden fazla isteği art arda işlediği için, her istekten sonra
+        # büyük görüntü nesnelerini bellekten açıkça düşürüyoruz.
+        del image_bytes
+        gc.collect()
 
     name, dosage = split_name_and_dosage(raw_result.get("ilac_adi_tahmini"))
 
