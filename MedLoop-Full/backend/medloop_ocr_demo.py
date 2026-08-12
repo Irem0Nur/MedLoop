@@ -299,23 +299,37 @@ def format_gs1_date(yymmdd: str) -> str | None:
 def detect_karekod(bgr_img: np.ndarray) -> dict | None:
     """Karekodu (DataMatrix) pylibdmtx ile okuyup GS1 alanlarını ayrıştırır.
     Bulunursa: gtin, skt, parti_no, seri_no, ham alanlarını döndürür.
-    Karekod genelde fotoğrafın küçük bir bölgesini kapladığından, tam görüntüye
-    ek olarak kutuya kırpılmış + büyütülmüş versiyonlar da denenir — bu, uzaktan
-    veya geniş kadrajla çekilmiş fotoğraflarda okuma başarısını artırır."""
-    gray = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2GRAY)
-    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
-    enhanced = clahe.apply(gray)
 
+    Hız notu: Bu fonksiyon en pahalı adım çünkü her aday görüntüyü 4 açıda
+    (0/90/180/270) deniyor. Aşağıdaki iki optimizasyon, THREAD/PARALEL
+    ÇALIŞMA KULLANMADAN (yani hiçbir kararlılık riski olmadan) deneme
+    sayısını ve toplam bekleme süresini azaltıyor:
+
+      1) Kutu tespiti (detect_and_crop_box) görüntüyü GERÇEKTEN kırptıysa,
+         orijinal (kırpılmamış) tam-boy görüntüyü ayrıca taramak neredeyse
+         her zaman gereksizdir — karekod zaten kırpılmış versiyonda da var.
+         Bu yüzden tam-boy fallback'i SADECE kutu bulunamadığında deniyoruz.
+      2) Tek bir ölçek (2.0x) yeterli oluyor; 3.0x varyantı pratikte ek bir
+         başarı getirmeden sadece deneme sayısını ikiye katlıyordu.
+
+    Timeout 2000ms -> 500ms: Görüntü zaten (app.py'de) makul bir boyuta
+    küçültülmüş olduğundan dmtx başarılı durumda çok daha hızlı karar
+    veriyor; 2000ms'lik eski sınır sadece "okunamayan" denemelerde
+    (worst-case) gereksiz yere bekletiyordu."""
     cropped_bgr = detect_and_crop_box(bgr_img)
+    box_detected = cropped_bgr.shape[:2] != bgr_img.shape[:2]
+
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
     cropped_gray = cv2.cvtColor(cropped_bgr, cv2.COLOR_BGR2GRAY)
     cropped_enh = clahe.apply(cropped_gray)
 
-    candidates = []
-    for scale in (3.0, 2.0):
-        candidates.append(cv2.resize(cropped_gray, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC))
-        candidates.append(cv2.resize(cropped_enh, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC))
-    candidates.append(gray)
-    candidates.append(enhanced)
+    candidates = [cv2.resize(cropped_enh, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC)]
+
+    if not box_detected:
+        # Kutu bulunamadıysa (yani cropped == orijinal), en azından kontrastı
+        # artırılmış tam-boy versiyonu bir kez deneyelim.
+        gray = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2GRAY)
+        candidates.append(clahe.apply(gray))
 
     for candidate in candidates:
         for angle in (0, 90, 180, 270):
@@ -328,7 +342,7 @@ def detect_karekod(bgr_img: np.ndarray) -> dict | None:
             else:
                 rotated = cv2.rotate(candidate, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
-            results = dmtx_decode(rotated, timeout=2000, max_count=1)
+            results = dmtx_decode(rotated, timeout=500, max_count=1)
             if results:
                 raw = results[0].data.decode("utf-8", errors="replace")
                 fields = parse_gs1_element_string(raw)
