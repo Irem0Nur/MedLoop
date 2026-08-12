@@ -1,0 +1,42 @@
+# MedLoop Backend - yerel geliştirme için Docker Compose
+# Kullanım:
+#   docker compose up --build
+#   -> API: http://localhost:5000
+#   -> PostgreSQL: localhost:5432 (kullanıcı: medloop / şifre: medloop / db: medloop)
+#
+# .env dosyan varsa otomatik okunur (bkz. .env.example).
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: medloop
+      POSTGRES_PASSWORD: medloop
+      POSTGRES_DB: medloop
+    ports:
+      - "5432:5432"
+    volumes:
+      - medloop_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medloop"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      DATABASE_URL: postgresql://medloop:medloop@db:5432/medloop
+      JWT_SECRET_KEY: dev-secret-degistir-bunu
+      PORT: "5000"
+    depends_on:
+      db:
+        condition: service_healthy
+    command: gunicorn --bind 0.0.0.0:5000 --timeout 180 --workers 1 app:app
+
+volumes:
+  medloop_pg_data:

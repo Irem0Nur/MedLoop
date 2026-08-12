@@ -1,45 +1,94 @@
 """
 MedLoop Backend API
 ====================
-medloop_ocr_demo.py içindeki mevcut OCR/barkod/karekod mantığını DEĞİŞTİRMEDEN
-bir web API'sine (Flask) sarmalayan dosya.
+Bu dosya iki şeyi bir arada barındırır:
 
-Frontend (React/Vite), ScanScreen.jsx'te bir fotoğraf çektiğinde, bu fotoğrafı
-base64 "data URL" formatında ( "data:image/jpeg;base64,....." ) POST /scan
-endpoint'ine yollar. Bu dosya:
-  1) Gelen base64 veriyi geçici bir dosyaya yazar
-  2) medloop_ocr_demo.py'deki run() fonksiyonunu (hiç dokunmadan) çağırır
-  3) Türkçe alan adlarını (ilac_adi_tahmini, skt, parti_no...) frontend'in
-     beklediği alan adlarına (name, dosage, expiryDate, batchNo...) çevirir
-  4) JSON olarak geri döner
+  1) OCR/barkod/karekod tarama servisi (DEĞİŞTİRİLMEDİ):
+     medloop_ocr_demo.py içindeki mantığı POST /scan endpoint'ine sarmalar.
+     Frontend (React/Vite) ScanScreen.jsx'te çektiği fotoğrafı base64 "data
+     URL" formatında bu endpoint'e yollar.
 
-Çalıştırma:
+  2) Bildirim sistemi backend'i (YENİ):
+     Kullanıcı hesapları (auth), ilaç kayıtları (medications), uygulama içi
+     + push bildirimler (notifications) ve puan sistemi. Kod, okunabilirlik
+     için ayrı modüllere/blueprint'lere bölündü:
+       - config.py            : ayarlar (env değişkenleri)
+       - extensions.py        : db / jwt / migrate / scheduler singleton'ları
+       - models.py             : User, Medication, Notification, DeviceToken
+       - auth/routes.py        : POST /auth/register, /auth/login, GET /auth/me
+       - medications/routes.py : ilaç CRUD + POST /medications/<id>/deliver
+       - notifications/routes.py : bildirim listesi/okundu işaretleme
+       - users/routes.py       : profil + push cihaz token kaydı
+       - services/notify.py    : bildirim oluşturma (DB + push tetikleme)
+       - services/push.py      : Firebase Cloud Messaging gönderim sarmalayıcısı
+       - services/points.py    : puan hesaplama
+       - scheduler_jobs.py     : günlük SKT (son kullanma tarihi) kontrol job'ı
+
+Çalıştırma (yerel geliştirme):
   cd backend
   pip install -r requirements.txt
+  cp .env.example .env   # gerekirse değerleri düzenle
   python app.py
   -> http://localhost:5000 adresinde ayağa kalkar
+  -> İlk çalıştırmada tablolar otomatik oluşturulur (db.create_all()).
+     Production'da bunun yerine flask-migrate migration'ları kullanılmalı
+     (bkz. README/.env.example).
 """
 
 import base64
 import gc
 import io
+import logging
 import re
 import sys
 import tempfile
 import time
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+load_dotenv()  # .env dosyası varsa (yerel geliştirme) env değişkenlerini yükle
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from PIL import Image
 
+from config import Config
+from extensions import db, jwt, migrate
+
 # medloop_ocr_demo.py aynı klasörde olduğu için doğrudan import edilebilir.
 from medloop_ocr_demo import run as run_ocr_pipeline
 
+logging.basicConfig(level=logging.INFO)
+
 app = Flask(__name__)
+app.config.from_object(Config)
+
 # Geliştirme aşamasında Vite dev server'ının (genelde localhost:5173) bu API'ye
-# istek atabilmesi için CORS'u tüm origin'lere açıyoruz. Prod'da bunu daraltın.
-CORS(app)
+# istek atabilmesi için CORS'u tüm origin'lere açıyoruz. Prod'da bunu daraltın
+# (bkz. CORS_ORIGINS env değişkeni / config.py).
+CORS(app, origins=app.config.get("CORS_ORIGINS", "*"))
+
+# --- Uzantıları bağla ---
+db.init_app(app)
+jwt.init_app(app)
+migrate.init_app(app, db)
+
+# --- Bildirim sistemi blueprint'lerini kaydet ---
+from auth.routes import auth_bp
+from medications.routes import medications_bp
+from notifications.routes import notifications_bp
+from users.routes import users_bp
+
+app.register_blueprint(auth_bp)
+app.register_blueprint(medications_bp)
+app.register_blueprint(notifications_bp)
+app.register_blueprint(users_bp)
+
+
+# ============================================================
+# OCR / Barkod / Karekod tarama (mevcut mantık - değiştirilmedi)
+# ============================================================
 
 
 def turkish_form_to_frontend(form_raw: str | None) -> str:
@@ -164,6 +213,46 @@ def scan():
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok"})
+
+
+# ============================================================
+# CLI komutları (manuel test/yönetim için)
+# ============================================================
+
+
+@app.cli.command("create-db")
+def create_db():
+    """Tabloları oluşturur (migration kullanmıyorsan hızlı başlangıç için).
+    Kullanım: flask --app app.py create-db"""
+    with app.app_context():
+        db.create_all()
+    print("Tablolar oluşturuldu.")
+
+
+@app.cli.command("check-expiry")
+def check_expiry_command():
+    """SKT kontrol job'ını elle (zamanlayıcı beklemeden) tetikler - test için.
+    Kullanım: flask --app app.py check-expiry"""
+    from scheduler_jobs import check_expiring_medications
+
+    check_expiring_medications(app)
+    print("SKT kontrolü tamamlandı.")
+
+
+# ============================================================
+# Uygulama başlangıcı
+# ============================================================
+
+# Geliştirmede (SQLite fallback) tabloların var olduğundan emin ol.
+# Production'da (DATABASE_URL = PostgreSQL) bunun yerine `flask db upgrade`
+# ile migration çalıştırmak tercih edilmeli; ama create_all() zaten var olan
+# tabloları değiştirmediği için burada bırakılması zararsız bir güvenlik ağı.
+with app.app_context():
+    db.create_all()
+
+from scheduler_jobs import start_scheduler
+
+start_scheduler(app)
 
 
 if __name__ == "__main__":

@@ -6,3 +6,12 @@ opencv-python-headless
 pyzbar
 pylibdmtx
 numpy
+
+# --- Bildirim sistemi backend'i için eklenenler ---
+flask-sqlalchemy
+flask-migrate
+flask-jwt-extended
+psycopg2-binary
+apscheduler
+firebase-admin
+python-dotenv
