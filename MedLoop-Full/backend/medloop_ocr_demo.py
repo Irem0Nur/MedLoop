@@ -126,7 +126,15 @@ def best_orientation_ocr(gray_img: np.ndarray, lang: str = "tur+eng") -> tuple[s
     """0/90/180/270 derece dener. Skor = yüksek güvenli (>%40), alfabetik ve en az
     3 karakterli 'temiz' kelime sayısına dayalı güven toplamı. Ham güven toplamı yerine
     bunun kullanılması, barkod/gürültüden gelen yanlış-yüksek-güvenli sahte kelimelerin
-    yanlış yönelimi kazandırmasını engeller."""
+    yanlış yönelimi kazandırmasını engeller.
+
+    Hız notu: Fotoğrafların büyük çoğunluğu zaten doğru yönde (0°) çekiliyor. Her
+    denemede bir Tesseract süreci başlatıldığından (yavaş donanımda pahalı), bir
+    açıda YETERİNCE güçlü bir sonuç bulunduğunda kalan açılar denenmeden hemen
+    döndürülür — bu, tipik (doğru yönlü) fotoğraflarda 4 denemeyi 1'e indirirken,
+    gerçekten döndürülmüş nadir fotoğraflarda hâlâ tüm açıları dener (doğruluk
+    kaybı yok, sadece yaygın durumda hız kazancı)."""
+    EARLY_EXIT_SCORE = 300  # birkaç güvenli, uzun kelime bulununca yeterli kabul edilir
     best_text, best_score = "", -1
     for angle in (0, 90, 180, 270):
         if angle == 0:
@@ -152,6 +160,8 @@ def best_orientation_ocr(gray_img: np.ndarray, lang: str = "tur+eng") -> tuple[s
         text = " ".join(w for w in data["text"] if w.strip())
         if score > best_score:
             best_text, best_score = text, score
+        if best_score >= EARLY_EXIT_SCORE:
+            break
     return best_text, best_score
 
 
