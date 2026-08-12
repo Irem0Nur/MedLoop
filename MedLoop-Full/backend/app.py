@@ -24,6 +24,13 @@ Bu dosya iki şeyi bir arada barındırır:
        - services/points.py    : puan hesaplama
        - scheduler_jobs.py     : günlük SKT (son kullanma tarihi) kontrol job'ı
 
+  3) İlaç kataloğu (YENİ):
+     TABİP açık ilaç veri seti (CC0, ~22.000 kayıt) - ekleme ekranında
+     otomatik tamamlama ve /scan'de barkod doğrulama için kullanılır.
+       - catalog/routes.py     : GET /catalog/search, GET /catalog/barcode/<b>
+       - scripts/seed_catalog.py : data/ilac_katalog.csv.zip -> DB aktarımı
+                                    (ilk deploy sonrası bir kez: flask seed-catalog)
+
 Çalıştırma (yerel geliştirme):
   cd backend
   pip install -r requirements.txt
@@ -45,6 +52,7 @@ import tempfile
 import time
 from pathlib import Path
 
+import click
 from dotenv import load_dotenv
 
 load_dotenv()  # .env dosyası varsa (yerel geliştirme) env değişkenlerini yükle
@@ -55,6 +63,7 @@ from PIL import Image
 
 from config import Config
 from extensions import db, jwt, migrate
+from models import MedicationCatalog
 
 # medloop_ocr_demo.py aynı klasörde olduğu için doğrudan import edilebilir.
 from medloop_ocr_demo import run as run_ocr_pipeline
@@ -79,11 +88,13 @@ from auth.routes import auth_bp
 from medications.routes import medications_bp
 from notifications.routes import notifications_bp
 from users.routes import users_bp
+from catalog.routes import catalog_bp
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(medications_bp)
 app.register_blueprint(notifications_bp)
 app.register_blueprint(users_bp)
+app.register_blueprint(catalog_bp)
 
 
 # ============================================================
@@ -136,6 +147,39 @@ def split_name_and_dosage(ilac_adi_tahmini: str | None) -> tuple[str, str]:
     if m:
         return m.group(1).strip(), m.group(2).strip()
     return ilac_adi_tahmini.strip(), ""
+
+
+def split_catalog_name_and_dosage(product_name: str | None) -> tuple[str, str]:
+    """Katalogdaki ürün adları OCR'dan farklı bir kalıpta: doz genelde ortada
+    geçiyor ('RANEKS 20 MG 28 ENTERIK KAPLI TABLET'), sonda değil. Bu yüzden
+    split_name_and_dosage'daki 'sonda ara' mantığı burada işe yaramıyor —
+    dozu string'in HERHANGİ bir yerinde arıyoruz, öncesini isim kabul ediyoruz."""
+    if not product_name:
+        return "", ""
+    m = re.search(r"^(.*?)\s*(\d+(?:[.,]\d+)?\s?(?:mg|mcg|g|ml))\b", product_name.strip(), re.IGNORECASE)
+    if m and m.group(1).strip():
+        return m.group(1).strip(), m.group(2).strip().upper()
+    return product_name.strip(), ""
+
+
+def lookup_catalog_by_gtin(gtin: str | None) -> MedicationCatalog | None:
+    """Taranan/okunan GTIN'i resmi ilaç kataloğunda (TABİP açık veri seti)
+    arar. Bulursa OCR'ın tahminleri yerine bu resmi kaydı kullanmak çok daha
+    güvenilir (OCR bazen 'BAP' gibi anlamsız isimler tahmin edebiliyor,
+    karekoddaki GTIN ise her zaman doğru)."""
+    if not gtin:
+        return None
+    gtin = gtin.strip()
+    match = MedicationCatalog.query.filter_by(barcode=gtin).first()
+    if not match:
+        # GTIN-14 vs GTIN-13/EAN13 farkı: bazı taramalar başa fazladan "0"
+        # ekleyebiliyor/eksik bırakabiliyor, baştaki sıfırları görmezden gel.
+        normalized = gtin.lstrip("0")
+        if normalized:
+            match = MedicationCatalog.query.filter(
+                MedicationCatalog.barcode.endswith(normalized)
+            ).first()
+    return match
 
 
 @app.route("/scan", methods=["POST"])
@@ -195,6 +239,14 @@ def scan():
 
     name, dosage = split_name_and_dosage(raw_result.get("ilac_adi_tahmini"))
 
+    # Karekod/barkoddan okunan GTIN resmi kataloğumuzda varsa, OCR'ın
+    # tahminleri yerine kataloğun doğrulanmış bilgilerini kullanıyoruz.
+    catalog_match = lookup_catalog_by_gtin(raw_result.get("gtin"))
+    if catalog_match:
+        catalog_name, catalog_dosage = split_catalog_name_and_dosage(catalog_match.product_name)
+        name = catalog_name or name
+        dosage = catalog_dosage or dosage
+
     # Frontend'in AddMedicineScreen.jsx'te beklediği tam şekil:
     # { name, dosage, form, quantity, batchNo, expiryDate }
     response = {
@@ -204,6 +256,10 @@ def scan():
         "quantity": 1,  # OCR/karekod adet bilgisi vermez; kullanıcı formda düzeltir
         "batchNo": raw_result.get("parti_no") or "",
         "expiryDate": gs1_date_to_iso(raw_result.get("skt")),
+        # YENİ: resmi katalogla doğrulandı mı? Frontend bunu "✓ Doğrulandı"
+        # rozeti göstermek için kullanabilir.
+        "verified": catalog_match is not None,
+        "activeIngredient": catalog_match.active_ingredient if catalog_match else None,
         # Debug/geliştirme için ham veriyi de ekliyoruz, frontend kullanmak zorunda değil
         "_raw": raw_result,
     }
@@ -237,6 +293,17 @@ def check_expiry_command():
 
     check_expiring_medications(app)
     print("SKT kontrolü tamamlandı.")
+
+
+@app.cli.command("seed-catalog")
+@click.option("--force", is_flag=True, help="Tablo doluysa bile sıfırlayıp yeniden aktar.")
+def seed_catalog_command(force):
+    """TABİP açık ilaç veri setini (data/ilac_katalog.csv.zip) MedicationCatalog
+    tablosuna aktarır. İlk deploy'dan sonra bir kez çalıştırılması yeterlidir.
+    Kullanım: flask --app app.py seed-catalog [--force]"""
+    from scripts.seed_catalog import import_catalog
+
+    import_catalog(app, force=force)
 
 
 # ============================================================

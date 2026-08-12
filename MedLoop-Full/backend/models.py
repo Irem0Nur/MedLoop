@@ -138,3 +138,40 @@ class DeviceToken(db.Model):
     token = db.Column(db.String(512), unique=True, nullable=False)
     platform = db.Column(db.String(20), nullable=True)  # "android" | "ios" | "web"
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+
+
+class MedicationCatalog(db.Model):
+    """Türkiye'de onaylı ilaçların referans kataloğu (kullanıcı verisi DEĞİL).
+
+    Kaynak: TABİP açık ilaç veri seti (CC0 lisans, T.C. Sağlık Bakanlığı ilaç
+    kayıtları temel alınarak hazırlanmış) - bkz. data/ilac_katalog_LICENSE.txt
+    ve scripts/seed_catalog.py.
+
+    İki amaçla kullanılır:
+      1) İlaç ekleme ekranında otomatik tamamlama (ürün adına göre arama)
+      2) Taranan/girilen barkodun (GTIN) gerçek bir ilaçla doğrulanması
+         (bkz. /scan endpoint'indeki katalog zenginleştirmesi)
+    """
+
+    __tablename__ = "medication_catalog"
+
+    id = db.Column(db.Integer, primary_key=True)
+    barcode = db.Column(db.String(32), nullable=False, index=True)
+    atc_code = db.Column(db.String(16), nullable=True)
+    active_ingredient = db.Column(db.String(255), nullable=True)
+    product_name = db.Column(db.String(255), nullable=False, index=True)
+    category_path = db.Column(db.String(512), nullable=True)
+    description = db.Column(db.Text, nullable=True)
+
+    def to_dict(self, include_description: bool = False):
+        data = {
+            "id": self.id,
+            "barcode": self.barcode,
+            "atcCode": self.atc_code,
+            "activeIngredient": self.active_ingredient,
+            "productName": self.product_name,
+            "category": self.category_path,
+        }
+        if include_description:
+            data["description"] = self.description
+        return data
