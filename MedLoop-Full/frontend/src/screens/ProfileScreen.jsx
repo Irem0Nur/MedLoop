@@ -17,6 +17,7 @@ import BottomNav from '../components/BottomNav.jsx'
 export default function ProfileScreen({
   points,
   medicinesCount,
+  totalDelivered,
   achievementsCount,
   themeName,
   avatarImage,
@@ -89,7 +90,7 @@ export default function ProfileScreen({
           <div className="grid grid-cols-3 gap-3 w-full mt-5">
             <StatBox value={points} label="MedLoop Puanı" />
             <StatBox value={medicinesCount} label="Toplam İlaç" />
-            <StatBox value={0} label="Toplam Teslim" />
+            <StatBox value={totalDelivered} label="Toplam Teslim" />
           </div>
         </div>
 

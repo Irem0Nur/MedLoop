@@ -12,7 +12,9 @@
   "dependencies": {
     "@capacitor-community/camera-preview": "^8.0.1",
     "@capacitor/camera": "^8.2.2",
+    "jsqr": "^1.4.0",
     "leaflet": "^1.9.4",
+    "qrcode": "^1.5.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-leaflet": "^5.0.0"

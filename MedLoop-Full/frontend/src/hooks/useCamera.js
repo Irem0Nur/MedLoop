@@ -1,41 +1,121 @@
-import { useCallback, useEffect, useState } from 'react'
-import { CameraPreview } from '@capacitor-community/camera-preview'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
-export function useCamera() {
-  const [status, setStatus] = useState('idle') // idle | requesting | ready | error
+/**
+ * Cihaz kamerasına canlı erişim sağlayan hook.
+ *
+ * Durumlar:
+ *  - 'idle'      → kamera henüz istenmedi
+ *  - 'requesting'→ izin isteniyor
+ *  - 'ready'     → video akışı hazır, kare yakalanabilir
+ *  - 'denied'    → kullanıcı izni reddetti
+ *  - 'unavailable' → cihazda kamera yok / desteklenmiyor
+ *  - 'error'     → beklenmeyen hata
+ *
+ * NOT: Bu hook sadece cihaz kamerasına erişimi yönetir. Yakalanan karenin
+ * ilaç kutusu olarak tanınması (OCR/barkod) backend tarafının işi —
+ * bkz. src/mock/scanService.js içindeki entegrasyon noktası.
+ */
+export function useCamera({ facingMode = 'environment' } = {}) {
+  const videoRef = useRef(null)
+  const streamRef = useRef(null)
+  const [status, setStatus] = useState('idle')
+  const [torchSupported, setTorchSupported] = useState(false)
+  const [torchOn, setTorchOn] = useState(false)
+
+  const stop = useCallback(() => {
+    streamRef.current?.getTracks().forEach((track) => track.stop())
+    streamRef.current = null
+  }, [])
 
   const start = useCallback(async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setStatus('unavailable')
+      return
+    }
     setStatus('requesting')
-    document.body.classList.add('camera-preview-active')
     try {
-      await CameraPreview.start({
-        position: 'rear',
-        parent: 'camera-preview-container',
-        className: 'camera-preview-fill',
-        toBack: true,        // webview'i şeffaf yapıp kamerayı arkaya koyar
-        enableZoom: false,
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          facingMode: { ideal: facingMode },
+          width: { ideal: 1280 },
+          height: { ideal: 1280 },
+        },
       })
+      streamRef.current = stream
+
+      const [track] = stream.getVideoTracks()
+      const capabilities = track.getCapabilities?.() ?? {}
+      setTorchSupported(Boolean(capabilities.torch))
+
+      // <video> elemanı ancak status 'ready' olunca DOM'a girer (bkz. ekranlardaki
+      // koşullu render), yani bu an videoRef.current henüz null olabilir. srcObject
+      // atamasını asıl olarak aşağıdaki useEffect ([status] bağımlılığıyla) yapıyoruz —
+      // o efekt, video mount olduktan SONRA çalıştığı için ref garanti dolu olur.
       setStatus('ready')
     } catch (err) {
-      setStatus('error')
+      if (err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') {
+        setStatus('denied')
+      } else if (err?.name === 'NotFoundError' || err?.name === 'DevicesNotFoundError') {
+        setStatus('unavailable')
+      } else {
+        setStatus('error')
+      }
     }
-  }, [])
+  }, [facingMode])
 
-  const stop = useCallback(async () => {
-    document.body.classList.remove('camera-preview-active')
-    try { await CameraPreview.stop() } catch {}
-  }, [])
+  const toggleTorch = useCallback(async () => {
+    const [track] = streamRef.current?.getVideoTracks() ?? []
+    if (!track || !torchSupported) return
+    try {
+      await track.applyConstraints({ advanced: [{ torch: !torchOn }] })
+      setTorchOn((prev) => !prev)
+    } catch {
+      // Bazı tarayıcılar torch'u destekler ama constraint uygulanamaz;
+      // sessizce yok say, buton pasif kalır.
+    }
+  }, [torchOn, torchSupported])
 
-  const captureFrame = useCallback(async () => {
-    const result = await CameraPreview.capture({ quality: 90 })
-    return `data:image/jpeg;base64,${result.value}`
+  /** Video akışından bir kare yakalayıp base64 JPEG olarak döndürür. */
+  const captureFrame = useCallback(() => {
+    const video = videoRef.current
+    if (!video || video.readyState < 2) return null
+
+    const canvas = document.createElement('canvas')
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    return canvas.toDataURL('image/jpeg', 0.92)
   }, [])
 
   useEffect(() => {
     start()
-    return () => { stop() }
+    return () => stop()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  return { status, captureFrame, retry: start }
+  // <video> elemanı 'ready' durumunda mount olduğu için, srcObject ataması
+  // burada yapılıyor — bu efekt DOM commit'inden SONRA çalıştığı için
+  // videoRef.current garanti dolu olur (yukarıdaki start() içindeki erken
+  // atama denemesi ref henüz boşken başarısız oluyordu).
+  useEffect(() => {
+    if (status === 'ready' && videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current
+      videoRef.current.play().catch(() => {
+        // Otomatik oynatma bazı tarayıcılarda engellenebilir; kullanıcı
+        // etkileşimiyle zaten oynatılıyor olacağı için sessizce yok say.
+      })
+    }
+  }, [status])
+
+  return {
+    videoRef,
+    status,
+    torchSupported,
+    torchOn,
+    toggleTorch,
+    captureFrame,
+    retry: start,
+  }
 }
