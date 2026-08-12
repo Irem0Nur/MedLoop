@@ -41,7 +41,6 @@ bu yüzden karekod için ayrı bir kütüphane (pylibdmtx/libdmtx) kullanılıyo
 import sys
 import re
 import json
-from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from pathlib import Path
 
@@ -384,20 +383,15 @@ def run(image_path: str) -> dict:
     clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
     enhanced = clahe.apply(gray)
 
-    # Karekod, barkod ve OCR birbirinden bağımsız işlemler (aynı görüntüyü
-    # okuyor ama sonuçları birbirine bağlı değil). Eskiden sırayla (biri
-    # bitince diğeri) çalıştırılıyordu — toplam süre üçünün toplamıydı.
-    # Ayrı thread'lerde paralel çalıştırınca toplam süre en yavaş olanına
-    # yakın oluyor (cv2/pytesseract/pylibdmtx C uzantıları çalışırken GIL'i
-    # bırakır, bu yüzden gerçek paralellik sağlanır).
-    with ThreadPoolExecutor(max_workers=3) as executor:
-        karekod_future = executor.submit(detect_karekod, bgr)
-        barkod_future = executor.submit(detect_barcode, bgr)
-        ocr_future = executor.submit(best_orientation_ocr, enhanced)
-
-        karekod = karekod_future.result()
-        barkod = barkod_future.result()
-        raw_text, confidence_sum = ocr_future.result()
+    # NOT: Karekod (pylibdmtx) ve barkod (pyzbar) çözücüleri C kütüphanelerine
+    # ctypes ile bağlanıyor; bu tür kütüphanelerin thread-safe olduğu garanti
+    # değildir. Paralel (ThreadPoolExecutor) çalıştırma denendi ama üretimde
+    # kararsız/hatalı sonuçlara yol açtığı için geri alındı — sıralı çalışma
+    # daha yavaş ama güvenilir. Hız kazanımının büyük kısmı zaten aşağıdaki
+    # timeout/aday-sayısı azaltmalarından ve görsel küçültmeden geliyor.
+    karekod = detect_karekod(bgr)
+    barkod = detect_barcode(bgr)
+    raw_text, confidence_sum = best_orientation_ocr(enhanced)
 
     fields = extract_fields(raw_text)
 
