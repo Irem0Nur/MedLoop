@@ -80,22 +80,6 @@ SKT_PATTERNS = [
 
 BARCODE_PATTERN = re.compile(r"\b\d{8,14}\b")
 
-# Telefon kameraları genelde 8-12MP (ör. 4000x3000) fotoğraf üretir. Bu boyutta
-# hem karekod taramasındaki upscale (aşağıda 2x/3x) hem de Tesseract OCR ciddi
-# şekilde yavaşlıyor. Tüm pipeline'ın başında görüntüyü makul bir üst sınıra
-# küçültmek, sonuç kalitesini neredeyse hiç etkilemeden süreyi büyük ölçüde
-# kısaltır (kutu üzerindeki yazı/karekod zaten bu çözünürlükte rahatça okunur).
-MAX_DIMENSION = 1600
-
-
-def resize_to_max_dimension(img: np.ndarray, max_dim: int = MAX_DIMENSION) -> np.ndarray:
-    h, w = img.shape[:2]
-    longest = max(h, w)
-    if longest <= max_dim:
-        return img
-    scale = max_dim / longest
-    return cv2.resize(img, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
-
 
 def detect_and_crop_box(bgr_img: np.ndarray, margin: int = 15) -> np.ndarray:
     """Fotoğraftaki koyu/mermer arka plandan parlak ilaç kutusunu ayırıp kırpar.
@@ -320,25 +304,18 @@ def detect_karekod(bgr_img: np.ndarray) -> dict | None:
     veya geniş kadrajla çekilmiş fotoğraflarda okuma başarısını artırır."""
     gray = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2GRAY)
     clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+    enhanced = clahe.apply(gray)
 
     cropped_bgr = detect_and_crop_box(bgr_img)
-    # detect_and_crop_box kutu bulamazsa görüntüyü DEĞİŞTİRMEDEN döndürür — yani
-    # bu durumda cropped_gray zaten gray ile birebir aynıdır. Eskiden ikisi de
-    # ayrı ayrı taranıyordu (aynı görüntüyü iki kez taramak = boşa harcanan süre).
-    # Artık tam-boy versiyonu SADECE kutu gerçekten bulunamadıysa deniyoruz.
-    box_detected = cropped_bgr.shape[:2] != bgr_img.shape[:2]
     cropped_gray = cv2.cvtColor(cropped_bgr, cv2.COLOR_BGR2GRAY)
     cropped_enh = clahe.apply(cropped_gray)
 
     candidates = []
-    # Tek varyant yeterli: CLAHE ile kontrastı artırılmış hali, düz griye göre
-    # pratikte en az o kadar başarılı ama iki değil tek deneme anlamına geliyor.
-    for scale in (2.0,):
+    for scale in (3.0, 2.0):
+        candidates.append(cv2.resize(cropped_gray, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC))
         candidates.append(cv2.resize(cropped_enh, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC))
-
-    if not box_detected:
-        enhanced = clahe.apply(gray)
-        candidates.append(enhanced)
+    candidates.append(gray)
+    candidates.append(enhanced)
 
     for candidate in candidates:
         for angle in (0, 90, 180, 270):
@@ -351,10 +328,7 @@ def detect_karekod(bgr_img: np.ndarray) -> dict | None:
             else:
                 rotated = cv2.rotate(candidate, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
-            # Timeout 2000ms -> 600ms: görüntü artık daha küçük (MAX_DIMENSION)
-            # olduğu için dmtx zaten çok daha hızlı karar veriyor; eski 2000ms
-            # sınırı sadece "okunamayan" denemelerde gereksiz yere bekletiyordu.
-            results = dmtx_decode(rotated, timeout=250, max_count=1)
+            results = dmtx_decode(rotated, timeout=2000, max_count=1)
             if results:
                 raw = results[0].data.decode("utf-8", errors="replace")
                 fields = parse_gs1_element_string(raw)
@@ -374,25 +348,21 @@ def run(image_path: str) -> dict:
     if bgr is None:
         bgr = cv2.cvtColor(np.array(Image.open(image_path).convert("RGB")), cv2.COLOR_RGB2BGR)
 
-    # Aşağıdaki tüm adımlar (karekod, barkod, OCR) piksel sayısıyla orantılı
-    # yavaşlıyor; bu yüzden pipeline'a girmeden önce tek seferde küçültüyoruz.
-    bgr = resize_to_max_dimension(bgr)
+    # 1) Önce karekod (DataMatrix) denenir — bulunursa SKT ve parti no doğrudan,
+    #    OCR/tahmin gerekmeden elde edilir.
+    karekod = detect_karekod(bgr)
 
+    # 2) Karekod yoksa/okunamazsa EAN13 barkod denenir (sadece GTIN verir).
+    barkod = detect_barcode(bgr)
+
+    # 3) OCR her durumda çalıştırılır — ilaç adı/form gibi karekodda olmayan
+    #    alanlar ve karekod+barkod ikisi de okunamazsa yedek SKT tahmini için.
     cropped = detect_and_crop_box(bgr)
     gray = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
     clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
     enhanced = clahe.apply(gray)
 
-    # NOT: Karekod (pylibdmtx) ve barkod (pyzbar) çözücüleri C kütüphanelerine
-    # ctypes ile bağlanıyor; bu tür kütüphanelerin thread-safe olduğu garanti
-    # değildir. Paralel (ThreadPoolExecutor) çalıştırma denendi ama üretimde
-    # kararsız/hatalı sonuçlara yol açtığı için geri alındı — sıralı çalışma
-    # daha yavaş ama güvenilir. Hız kazanımının büyük kısmı zaten aşağıdaki
-    # timeout/aday-sayısı azaltmalarından ve görsel küçültmeden geliyor.
-    karekod = detect_karekod(bgr)
-    barkod = detect_barcode(bgr)
     raw_text, confidence_sum = best_orientation_ocr(enhanced)
-
     fields = extract_fields(raw_text)
 
     if karekod:
