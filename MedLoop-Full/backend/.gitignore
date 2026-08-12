@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+*.egg-info/
+
+# Ortam değişkenleri / gizli bilgiler
+.env
+
+# Yerel geliştirme veritabanı (SQLite fallback)
+medloop_dev.db
+
+# Firebase service account key (asla commit'leme)
+*firebase*service*account*.json
