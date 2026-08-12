@@ -12,7 +12,7 @@ const STATUS_TEXT = {
 }
 
 export default function ScanScreen({ onBack, onScanSuccess, onNavigate }) {
-  const { status: cameraStatus, captureFrame, retry } = useCamera()
+  const { videoRef, status: cameraStatus, captureFrame, retry } = useCamera()
   const [scanStatus, setScanStatus] = useState('waiting')
   const fileInputRef = useRef(null)
   const busy = scanStatus === 'scanning'
@@ -47,6 +47,15 @@ export default function ScanScreen({ onBack, onScanSuccess, onNavigate }) {
 
   return (
     <div id="camera-preview-container" className="app-shell flex flex-col" style={{ background: 'transparent' }}>
+      {cameraStatus === 'ready' && (
+  <video
+    ref={videoRef}
+    autoPlay
+    playsInline
+    muted
+    className="absolute inset-0 w-full h-full object-cover"
+  />
+)}
       <div className="absolute inset-0 bg-gradient-to-b from-night-900/40 via-transparent to-night-900/70 pointer-events-none" />
 
       <div className="relative z-10 flex items-center justify-between px-4 pt-5">
@@ -92,7 +101,7 @@ export default function ScanScreen({ onBack, onScanSuccess, onNavigate }) {
             <ScanTargetIcon />
           </button>
           <button type="button" onClick={() => fileInputRef.current?.click()} aria-label="Galeriden seç"
-            className="w-12 h-12 rounded-full bg-pink-500 backdrop-blur flex items-center justify-center text-white">
+            className="w-12 h-12 rounded-full bg-forest-600 backdrop-blur flex items-center justify-center text-white">
             <ImageIcon />
           </button>
           <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFilePicked} />
