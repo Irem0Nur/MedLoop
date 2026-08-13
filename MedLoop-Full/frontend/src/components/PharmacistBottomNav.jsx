@@ -1,6 +1,7 @@
 const TABS = [
   { key: 'home', label: 'Ana Sayfa', icon: HomeIcon },
-  { key: 'history', label: 'Geçmiş', icon: HistoryIcon },
+  { key: 'stock', label: 'Stok', icon: StockIcon },
+  { key: 'history', label: 'Teslimatlar', icon: HistoryIcon },
   { key: 'profile', label: 'Profil', icon: UserIcon },
 ]
 
@@ -50,6 +51,13 @@ function HistoryIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 12a9 9 0 1 0 3-6.7" /><path d="M3 4v5h5" /><path d="M12 7v5l3.5 2" />
+    </svg>
+  )
+}
+function StockIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 8 12 3 3 8l9 5 9-5Z" /><path d="M3 8v8l9 5 9-5V8" /><path d="M12 13v8" />
     </svg>
   )
 }

@@ -1,34 +1,44 @@
 import { useMemo, useState } from 'react'
 import PharmacistBottomNav from '../components/PharmacistBottomNav.jsx'
+import { getStockGroups, getDisposedGroups, mockBarcode } from '../utils/pharmacyStock.js'
 
 const FILTERS = [
   { key: 'all', label: 'Tümü' },
-  { key: 'pending', label: 'Bekleyen' },
-  { key: 'completed', label: 'Tamamlanan' },
+  { key: 'critical', label: 'Kritik Stok' },
+  { key: 'expiry', label: 'SKT Yaklaşan' },
+  { key: 'disposed', label: 'İmha Edilenler' },
 ]
 
-export default function PharmacistHistoryScreen({ deliveries, onOpenDelivery, onNavigate }) {
+export default function PharmacistStockScreen({ deliveries, onOpenStock, onNavigate }) {
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState('all')
 
+  const activeGroups = useMemo(() => getStockGroups(deliveries), [deliveries])
+  const disposedGroups = useMemo(() => getDisposedGroups(deliveries), [deliveries])
+
+  const list = filter === 'disposed' ? disposedGroups : activeGroups
+
   const filtered = useMemo(() => {
-    return [...deliveries]
-      .reverse()
-      .filter((d) => {
+    return list
+      .filter((g) => {
+        if (filter === 'critical') return g.isCritical
+        if (filter === 'expiry') return g.worstExpiryStatus !== 'safe'
+        return true
+      })
+      .filter((g) => {
         const q = query.trim().toLowerCase()
         if (!q) return true
-        const inName = (d.citizenName ?? '').toLowerCase().includes(q)
-        const inItems = d.items.some((i) => i.name.toLowerCase().includes(q))
-        return inName || inItems
+        return g.name.toLowerCase().includes(q) || mockBarcode(g.name).includes(q)
       })
-      .filter((d) => filter === 'all' || d.status === filter)
-  }, [deliveries, query, filter])
+  }, [list, filter, query])
 
   return (
     <div className="app-shell flex flex-col">
       <header className="relative z-10 px-5 pt-6">
-        <h1 className="font-display font-bold text-forest-900 text-xl">Teslimatlar</h1>
-        <p className="text-sm text-forest-700/60 mt-0.5">{deliveries.length} kayıt</p>
+        <h1 className="font-display font-bold text-forest-900 text-xl">Stok Yönetimi</h1>
+        <p className="text-sm text-forest-700/60 mt-0.5">
+          {filter === 'disposed' ? `${disposedGroups.length} imha edilen kalem` : `${activeGroups.length} ilaç çeşidi`}
+        </p>
       </header>
 
       <div className="relative z-10 px-5 mt-4">
@@ -40,18 +50,18 @@ export default function PharmacistHistoryScreen({ deliveries, onOpenDelivery, on
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Vatandaş veya ilaç adı ara..."
+            placeholder="İlaç adı veya barkod ara..."
             className="w-full h-12 rounded-xl pl-10 pr-3.5 bg-white/70 border border-mint-200 text-sm text-forest-900 placeholder:text-forest-700/35 outline-none focus:border-forest-500 transition-colors"
           />
         </div>
 
-        <div className="flex gap-2 mt-3">
+        <div className="flex gap-2 mt-3 overflow-x-auto no-scrollbar">
           {FILTERS.map((f) => (
             <button
               key={f.key}
               type="button"
               onClick={() => setFilter(f.key)}
-              className={`px-4 py-2 rounded-full text-xs font-semibold transition-colors ${
+              className={`shrink-0 px-4 py-2 rounded-full text-xs font-semibold transition-colors ${
                 filter === f.key ? 'bg-forest-600 text-white' : 'bg-white/70 text-forest-700/70'
               }`}
             >
@@ -65,44 +75,42 @@ export default function PharmacistHistoryScreen({ deliveries, onOpenDelivery, on
         {filtered.length === 0 ? (
           <div className="glass-card rounded-2xl p-6 text-center mt-4">
             <p className="text-sm text-forest-900 font-medium">
-              {deliveries.length === 0 ? 'Henüz teslimat yok.' : 'Bu filtreye uyan teslimat yok.'}
+              {list.length === 0 ? 'Bu kategoride ilaç yok.' : 'Bu filtreye uyan ilaç yok.'}
             </p>
             <p className="text-xs text-forest-700/60 mt-1">
-              {deliveries.length === 0
-                ? 'Bir vatandaşın QR kodunu okutarak teslimat onaylayabilirsin.'
-                : 'Arama veya filtreyi değiştirmeyi dene.'}
+              {filter === 'disposed'
+                ? 'Henüz imhaya gönderilmiş bir ilaç yok.'
+                : 'Teslimatlar onaylandıkça burada birikir.'}
             </p>
           </div>
         ) : (
           <ul className="flex flex-col gap-3">
-            {filtered.map((d) => (
-              <li key={d.id}>
+            {filtered.map((g) => (
+              <li key={g.name}>
                 <button
                   type="button"
-                  onClick={() => onOpenDelivery(d.id)}
+                  onClick={() => onOpenStock(g.name, filter === 'disposed')}
                   className="w-full text-left glass-card rounded-2xl p-4 flex items-center gap-3"
                 >
-                  <span className="w-11 h-11 rounded-full bg-forest-600 text-white flex items-center justify-center shrink-0">
-                    <PersonIcon />
-                  </span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-forest-900 truncate">{d.citizenName ?? 'Vatandaş'}</p>
-                      <span
-                        className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
-                          d.status === 'pending' ? 'bg-amber-100 text-amber-400' : 'bg-sage-100 text-sage-400'
-                        }`}
-                      >
-                        {d.status === 'pending' ? 'Bekliyor' : 'Tamamlandı'}
-                      </span>
+                      <p className="text-sm font-semibold text-forest-900 truncate">{g.name}</p>
+                      {g.isCritical && filter !== 'disposed' && (
+                        <span className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-500">
+                          Kritik
+                        </span>
+                      )}
+                      {g.worstExpiryStatus !== 'safe' && filter !== 'disposed' && (
+                        <span className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-400">
+                          SKT
+                        </span>
+                      )}
                     </div>
-                    <p className="text-xs text-forest-700/60 truncate">{d.items.map((i) => i.name).join(', ')}</p>
+                    <p className="text-xs text-forest-700/60 mt-0.5">{g.dosage} · {g.form}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-xs font-medium text-forest-700/70">{d.items.length} ilaç</p>
-                    <p className="text-[11px] text-forest-700/50">
-                      {new Date(d.confirmedAt ?? d.createdAt).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })}
-                    </p>
+                    <p className="text-sm font-bold text-forest-900">{g.totalQuantity}</p>
+                    <p className="text-[10px] text-forest-700/50">adet</p>
                   </div>
                   <ChevronIcon />
                 </button>
@@ -112,7 +120,7 @@ export default function PharmacistHistoryScreen({ deliveries, onOpenDelivery, on
         )}
       </section>
 
-      <PharmacistBottomNav active="history" onNavigate={onNavigate} />
+      <PharmacistBottomNav active="stock" onNavigate={onNavigate} />
     </div>
   )
 }
@@ -121,13 +129,6 @@ function SearchIcon() {
   return (
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" />
-    </svg>
-  )
-}
-function PersonIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 4-6 8-6s8 2 8 6" />
     </svg>
   )
 }

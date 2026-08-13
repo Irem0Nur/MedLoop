@@ -24,6 +24,10 @@ import PharmacistHomeScreen from './screens/PharmacistHomeScreen.jsx'
 import PharmacistHistoryScreen from './screens/PharmacistHistoryScreen.jsx'
 import PharmacistDeliveryDetailScreen from './screens/PharmacistDeliveryDetailScreen.jsx'
 import PharmacistProfileScreen from './screens/PharmacistProfileScreen.jsx'
+import PharmacistStockScreen from './screens/PharmacistStockScreen.jsx'
+import PharmacistStockDetailScreen from './screens/PharmacistStockDetailScreen.jsx'
+import PharmacistNotificationsScreen from './screens/PharmacistNotificationsScreen.jsx'
+import PharmacistStatsScreen from './screens/PharmacistStatsScreen.jsx'
 import QrScanScreen from './screens/QrScanScreen.jsx'
 import DeliveryConfirmScreen from './screens/DeliveryConfirmScreen.jsx'
 import { getExpiryStatus } from './utils/expiry.js'
@@ -53,12 +57,22 @@ import {
  *
  * home / medicines / scan / notifications / profile arası geçiş alt gezinme
  * çubuğu (navigateTo) ile. Eczacı tarafı kendi çubuğuna sahip
- * (pharmacistNavigateTo): pharmacist-home / pharmacist-history / pharmacist-profile.
+ * (pharmacistNavigateTo): pharmacist-home / pharmacist-stock /
+ * pharmacist-history / pharmacist-profile. Eczacı ayrıca Ana Sayfa'dan
+ * bildirimlere (pharmacist-notifications) ve istatistiklere
+ * (pharmacist-stats) erişebilir.
+ *
  * Gece Modu ve Tema GERÇEKTİR: <html> öğesine .dark / .theme-* class'ı
  * eklenir. Profil fotoğrafı, eczane adresi/telefonu gibi bazı alanlar
  * backend'de karşılığı olmadığı için hâlâ sadece bu oturumda (yerel) tutulur.
  * Yasal belgeler (Gizlilik Politikası / Kullanım Koşulları) public/legal/
  * altındaki statik HTML sayfaları olarak yeni sekmede açılır.
+ *
+ * NOT (imha/dispose akışı): handleDisposeDelivery şu an sadece istemci
+ * tarafında (yerel state) çalışıyor — backend'de henüz karşılık gelen bir
+ * endpoint yoksa, bir sonraki refreshDeliveries() çağrısında bu işaretleme
+ * kaybolabilir. Backend'de bir "dispose" endpoint'i eklenince buranın da
+ * gerçek bir API çağrısına bağlanması gerekir.
  */
 export default function App() {
   const [screen, setScreen] = useState('splash')
@@ -79,15 +93,20 @@ export default function App() {
 
   const [pendingScan, setPendingScan] = useState(null)
   const [activeMedicineId, setActiveMedicineId] = useState(null)
-
   const [isDarkMode, setIsDarkMode] = useState(
     () => typeof window !== 'undefined' && localStorage.getItem('medloop-dark-mode') === 'true'
   )
   const [unlockedAchievements, setUnlockedAchievements] = useState(() => new Set())
+  // "achievements" ekranı hem Ana Sayfa Hızlı Erişim'den hem Profil'den
+  // açılabiliyor; geri butonu doğru yere dönsün diye kaynağını tutuyoruz.
   const [achievementsOrigin, setAchievementsOrigin] = useState('home')
+  // Seçili tema id'si — <html>'e THEMES içindeki className uygulanır.
   const [themeId, setThemeId] = useState(
     () => (typeof window !== 'undefined' && localStorage.getItem('medloop-theme')) || 'green'
   )
+  // Kamera/galeriden seçilen profil fotoğrafı (data URL). Diğer uygulama
+  // verileri gibi kalıcı depolanmıyor — sayfa yenilenince sıfırlanabilir
+  // (bkz. Profil > Gizlilik açıklaması).
   const [avatarImage, setAvatarImage] = useState(null)
 
   // Vatandaş: QR oluşturmak için backend'den dönen teslimat kaydı (token+items).
@@ -100,14 +119,23 @@ export default function App() {
   const [deliveryDetailOrigin, setDeliveryDetailOrigin] = useState('pharmacist-home')
   const [themeOrigin, setThemeOrigin] = useState('profile')
 
+  // Stok Detayı ekranında gösterilecek ilaç (isim anahtarı) ve hangi
+  // listeden (aktif stok / imha edilenler) açıldığı — geri dönüş için.
+  const [activeStockKey, setActiveStockKey] = useState(null)
+  const [activeStockIsDisposedView, setActiveStockIsDisposedView] = useState(false)
+  const [stockDetailOrigin, setStockDetailOrigin] = useState('pharmacist-stock')
+
   // Eczane profil bilgileri — adı hesaptan gelir, adres/telefon backend'de
   // karşılığı olmadığı için sadece bu oturumda tutulur.
   const [pharmacyProfile, setPharmacyProfile] = useState({
     name: 'Eczanem',
     address: 'Atatürk Cad. No:12',
     phone: '0232 123 45 67',
+    pharmacistName: 'Ecz. Elif Kaya',
+    workingHours: 'Pzt–Cmt 09:00–19:00',
   })
 
+  // Bildirim Ayarları'ndaki gerçek tercihler — Bildirimler ekranını filtreler.
   const [notificationPrefs, setNotificationPrefs] = useState(() => {
     if (typeof window === 'undefined') return { soonEnabled: true, expiredEnabled: true }
     try {
@@ -127,6 +155,7 @@ export default function App() {
     localStorage.setItem('medloop-dark-mode', String(isDarkMode))
   }, [isDarkMode])
 
+  // Seçili temanın class'ını <html>'e uygular; diğer tema class'larını temizler.
   useEffect(() => {
     THEMES.forEach((t) => t.className && document.documentElement.classList.remove(t.className))
     const theme = THEMES.find((t) => t.id === themeId)
@@ -213,7 +242,8 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUser?.id])
 
-  // Rozet kriterlerini gerçek durumla karşılaştırır.
+  // Rozet kriterlerini gerçek durumla karşılaştırır; bir rozet bir kez
+  // kazanıldığında sette kalıcı kalır (kriter artık sağlanmasa bile).
   useEffect(() => {
     const ctx = {
       medicines: medicines.map((m) => ({ ...m, expiryStatusKey: getExpiryStatus(m.expiryDate).key })),
@@ -297,8 +327,10 @@ export default function App() {
     }
   }
 
+  // Eczacı tarafının kendi alt gezinme çubuğu (Ana Sayfa / Stok / Geçmiş / Profil).
   const pharmacistNavigateTo = (key) => {
     if (key === 'home') setScreen('pharmacist-home')
+    else if (key === 'stock') setScreen('pharmacist-stock')
     else if (key === 'history') setScreen('pharmacist-history')
     else if (key === 'profile') setScreen('pharmacist-profile')
     if (key === 'home' || key === 'history') refreshDeliveries()
@@ -312,6 +344,9 @@ export default function App() {
     window.open('/legal/terms-of-use.html', '_blank', 'noopener,noreferrer')
   }
 
+  // Ana sayfadaki Hızlı Erişim kartları — bottom nav'daki sekmelerle
+  // (medicines, notifications) aynı navigateTo'yu, henüz geliştirilmeyen
+  // hedefler için ise placeholder ekranları kullanır.
   const handleQuickAccess = (key) => {
     if (key === 'medicines' || key === 'notifications') navigateTo(key)
     else if (key === 'deliver') setScreen('deliver')
@@ -425,6 +460,16 @@ export default function App() {
   // backend'e POST /deliveries/<token>/confirm atar) geçmiş listesine ekler.
   const handleDeliveryConfirmed = (delivery) => {
     setDeliveries((prev) => [delivery, ...prev])
+  }
+
+  // Bir teslimatı (tek bir "parti") imhaya gönderir — o kayıt aktif stok
+  // toplamından düşer, "İmha Edilenler" geçmişinde kalıcı olarak görünür.
+  // NOT: Şu an sadece yerel state'i günceller (bkz. dosya başındaki not) —
+  // backend'de karşılığı olan bir endpoint eklenince buraya bağlanmalı.
+  const handleDisposeDelivery = (deliveryId) => {
+    setDeliveries((prev) =>
+      prev.map((d) => (d.id === deliveryId ? { ...d, disposedAt: new Date().toISOString() } : d))
+    )
   }
 
   // Bu cihazdaki tüm ilaçları backend'den de gerçekten siler.
@@ -616,9 +661,62 @@ export default function App() {
           setDeliveryDetailOrigin('pharmacist-home')
           setScreen('pharmacist-delivery-detail')
         }}
+        onOpenNotifications={() => setScreen('pharmacist-notifications')}
+        onOpenStats={() => setScreen('pharmacist-stats')}
         onNavigate={pharmacistNavigateTo}
       />
     )
+  }
+
+  if (screen === 'pharmacist-stock') {
+    return (
+      <PharmacistStockScreen
+        deliveries={deliveries}
+        onOpenStock={(name, isDisposedView) => {
+          setActiveStockKey(name)
+          setActiveStockIsDisposedView(isDisposedView)
+          setStockDetailOrigin('pharmacist-stock')
+          setScreen('pharmacist-stock-detail')
+        }}
+        onNavigate={pharmacistNavigateTo}
+      />
+    )
+  }
+
+  if (screen === 'pharmacist-stock-detail') {
+    return (
+      <PharmacistStockDetailScreen
+        deliveries={deliveries}
+        medicineName={activeStockKey}
+        isDisposedView={activeStockIsDisposedView}
+        onDispose={handleDisposeDelivery}
+        onBack={() => setScreen(stockDetailOrigin)}
+      />
+    )
+  }
+
+  if (screen === 'pharmacist-notifications') {
+    return (
+      <PharmacistNotificationsScreen
+        deliveries={deliveries}
+        onOpenDelivery={(id) => {
+          setActiveDeliveryId(id)
+          setDeliveryDetailOrigin('pharmacist-notifications')
+          setScreen('pharmacist-delivery-detail')
+        }}
+        onOpenStock={(name) => {
+          setActiveStockKey(name)
+          setActiveStockIsDisposedView(false)
+          setStockDetailOrigin('pharmacist-notifications')
+          setScreen('pharmacist-stock-detail')
+        }}
+        onBack={() => setScreen('pharmacist-home')}
+      />
+    )
+  }
+
+  if (screen === 'pharmacist-stats') {
+    return <PharmacistStatsScreen deliveries={deliveries} onBack={() => setScreen('pharmacist-home')} />
   }
 
   if (screen === 'pharmacist-history') {
@@ -644,13 +742,14 @@ export default function App() {
 
   if (screen === 'pharmacist-profile') {
     const currentTheme = THEMES.find((t) => t.id === themeId) ?? THEMES[0]
-    const totalMedicinesReceived = deliveries.reduce((sum, d) => sum + d.items.length, 0)
+    const completedDeliveries = deliveries.filter((d) => d.status === 'completed')
+    const totalMedicinesReceived = completedDeliveries.reduce((sum, d) => sum + d.items.length, 0)
     return (
       <PharmacistProfileScreen
         pharmacyProfile={pharmacyProfile}
         onUpdateProfile={setPharmacyProfile}
         themeName={currentTheme.name}
-        totalDeliveries={deliveries.length}
+        totalDeliveries={completedDeliveries.length}
         totalMedicines={totalMedicinesReceived}
         isDarkMode={isDarkMode}
         onToggleDarkMode={() => setIsDarkMode((prev) => !prev)}
@@ -784,6 +883,8 @@ export default function App() {
           setDeliveryDetailOrigin('pharmacist-home')
           setScreen('pharmacist-delivery-detail')
         }}
+        onOpenNotifications={() => setScreen('pharmacist-notifications')}
+        onOpenStats={() => setScreen('pharmacist-stats')}
         onNavigate={pharmacistNavigateTo}
       />
     )
