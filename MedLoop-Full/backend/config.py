@@ -48,6 +48,9 @@ class Config:
     EXPIRY_WARNING_DAYS_BEFORE = int(os.environ.get("EXPIRY_WARNING_DAYS_BEFORE", "7"))
     # Eczaneye teslim edilen ilaç başına kazanılan puan
     POINTS_PER_DELIVERY = int(os.environ.get("POINTS_PER_DELIVERY", "10"))
+    # QR teslim akışında token'ın geçerli olduğu süre (dakika). Bu süre
+    # sonunda eczacı henüz taramamışsa vatandaş QR'ı yeniden oluşturmalı.
+    DELIVERY_TOKEN_EXPIRES_MINUTES = int(os.environ.get("DELIVERY_TOKEN_EXPIRES_MINUTES", "15"))
 
     # --- Zamanlanmış görev (SKT kontrolü) ---
     # Varsayılan: her gün 09:00'da çalışır (sunucu saat dilimine göre).

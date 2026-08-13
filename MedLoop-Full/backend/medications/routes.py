@@ -4,9 +4,16 @@ MedLoop Backend - İlaç (medication) endpoint'leri
   POST   /medications             -> ilaç ekle (başarılı eklemede bildirim oluşur)
   GET    /medications              -> kullanıcının ilaçlarını listele (?status=active|expired|delivered)
   GET    /medications/<id>         -> tek ilaç detayı
+  PATCH  /medications/<id>         -> ilaç bilgilerini düzenle
   DELETE /medications/<id>         -> ilacı sil (yanlış eklenmişse)
-  POST   /medications/<id>/deliver -> eczaneye teslim edildi olarak işaretle,
-                                       puan ekle ve 'delivered' bildirimi oluştur
+  POST   /medications/<id>/deliver -> (basit/tekil) eczaneye teslim edildi
+                                       olarak işaretle, puan ekle ve
+                                       'delivered' bildirimi oluştur.
+                                       NOT: Gerçek uygulama akışı artık
+                                       deliveries/routes.py'deki QR tabanlı
+                                       çift taraflı (vatandaş+eczacı) akışı
+                                       kullanıyor; bu endpoint geriye dönük
+                                       uyumluluk/basit test için duruyor.
 
 Hepsi JWT ile korunur (Authorization: Bearer <token>).
 """
@@ -95,6 +102,55 @@ def get_medication(medication_id):
     medication = Medication.query.filter_by(id=medication_id, user_id=user.id).first()
     if not medication:
         return jsonify({"error": "İlaç bulunamadı"}), 404
+    return jsonify({"medication": medication.to_dict()})
+
+
+@medications_bp.route("/<int:medication_id>", methods=["PATCH", "PUT"])
+@jwt_required()
+def update_medication(medication_id):
+    user = get_current_user()
+    medication = Medication.query.filter_by(id=medication_id, user_id=user.id).first()
+    if not medication:
+        return jsonify({"error": "İlaç bulunamadı"}), 404
+    if medication.status == "delivered":
+        return jsonify({"error": "Teslim edilmiş bir ilaç düzenlenemez"}), 409
+
+    payload = request.get_json(silent=True) or {}
+
+    if "name" in payload:
+        name = (payload.get("name") or "").strip()
+        if not name:
+            return jsonify({"error": "İlaç adı (name) boş olamaz"}), 400
+        medication.name = name
+    if "dosage" in payload:
+        medication.dosage = (payload.get("dosage") or "").strip() or None
+    if "form" in payload:
+        medication.form = (payload.get("form") or "").strip() or None
+    if "quantity" in payload:
+        try:
+            quantity = int(payload.get("quantity"))
+        except (TypeError, ValueError):
+            return jsonify({"error": "quantity bir sayı olmalı"}), 400
+        if quantity < 1:
+            return jsonify({"error": "quantity en az 1 olmalı"}), 400
+        medication.quantity = quantity
+    if "batchNo" in payload:
+        medication.batch_no = (payload.get("batchNo") or "").strip() or None
+    if "gtin" in payload:
+        medication.gtin = (payload.get("gtin") or "").strip() or None
+    if "expiryDate" in payload:
+        expiry_date = _parse_date(payload.get("expiryDate"))
+        if not expiry_date:
+            return jsonify({"error": "expiryDate 'YYYY-MM-DD' formatında olmalı"}), 400
+        medication.expiry_date = expiry_date
+        medication.status = "expired" if expiry_date < date.today() else "active"
+        # Tarih değiştiği için SKT uyarı bayrakları sıfırlanmalı, yoksa
+        # scheduler bu ilaç için bir daha uyarı göndermez.
+        medication.notified_week_sent = False
+        medication.notified_today_sent = False
+
+    db.session.add(medication)
+    db.session.commit()
     return jsonify({"medication": medication.to_dict()})
 
 

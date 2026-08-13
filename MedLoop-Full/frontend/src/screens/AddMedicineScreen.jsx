@@ -1,15 +1,28 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import BottomNav from '../components/BottomNav.jsx'
+import { catalogApi } from '../utils/api.js'
 
 const FORM_OPTIONS = ['Tablet', 'Kapsül', 'Şurup', 'İğne', 'Merhem', 'Damla']
+
+// Katalog ürün adının içinden dozu ayıklamaya çalışır (backend'deki
+// split_catalog_name_and_dosage ile aynı mantık) — ör.
+// "RANEKS 20 MG 28 ENTERİK KAPLI TABLET" -> { name: "RANEKS", dosage: "20 MG" }
+function splitNameAndDosage(productName) {
+  const match = productName
+    .trim()
+    .match(/^(.*?)\s*(\d+(?:[.,]\d+)?\s?(?:mg|mcg|g|ml))\b/i)
+  if (!match) return { name: productName.trim(), dosage: '' }
+  return { name: match[1].trim(), dosage: match[2].trim() }
+}
 
 /**
  * Tarama başarılı olduğunda açılan ekran. Backend'den (OCR/barkod) gelen
  * taslak bilgileri kullanıcıya gösterir; kullanıcı onaylayıp düzenleyerek
- * ilacı dolabına ekler.
+ * ilacı dolabına ekler. İlaç adı yazılırken /catalog/search ile gerçek
+ * Türkiye ilaç kataloğundan otomatik tamamlama önerileri gösterilir.
  *
  * @param {{ image: string, draft: object }} scanResult
- * @param {(medicine: object) => void} onSave
+ * @param {(medicine: object) => Promise<void>} onSave - backend'e POST eder
  */
 export default function AddMedicineScreen({ scanResult, onSave, onCancel }) {
   const { image, draft } = scanResult
@@ -24,7 +37,12 @@ export default function AddMedicineScreen({ scanResult, onSave, onCancel }) {
     note: '',
   }))
   const [errors, setErrors] = useState({})
+  const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+
+  const [suggestions, setSuggestions] = useState([])
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false)
+  const skipNextSearch = useRef(false)
 
   const daysUntilExpiry = useMemo(() => {
     if (!form.expiryDate) return null
@@ -37,6 +55,39 @@ export default function AddMedicineScreen({ scanResult, onSave, onCancel }) {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
 
+  // İlaç adı en az 2 karakter olduğunda 300ms debounce ile katalogda arar.
+  useEffect(() => {
+    if (skipNextSearch.current) {
+      skipNextSearch.current = false
+      return
+    }
+    const query = form.name.trim()
+    if (query.length < 2) {
+      setSuggestions([])
+      setSuggestionsOpen(false)
+      return
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const data = await catalogApi.search(query, 6)
+        setSuggestions(data?.results ?? [])
+        setSuggestionsOpen(true)
+      } catch {
+        // Katalog araması opsiyonel bir yardımcı özellik — sessizce vazgeç.
+        setSuggestions([])
+      }
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [form.name])
+
+  const handlePickSuggestion = (item) => {
+    const { name, dosage } = splitNameAndDosage(item.productName)
+    skipNextSearch.current = true
+    setForm((prev) => ({ ...prev, name, dosage: dosage || prev.dosage }))
+    setSuggestionsOpen(false)
+    setSuggestions([])
+  }
+
   const validate = () => {
     const next = {}
     if (!form.name.trim()) next.name = 'İlaç adı gerekli.'
@@ -46,12 +97,17 @@ export default function AddMedicineScreen({ scanResult, onSave, onCancel }) {
     return Object.keys(next).length === 0
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!validate()) return
-    const medicine = { ...form, image, id: crypto.randomUUID() }
-    setSaved(true)
-    setTimeout(() => onSave?.(medicine), 700)
+    setSaving(true)
+    try {
+      await onSave?.({ ...form, image })
+      setSaved(true)
+    } catch (err) {
+      setErrors((prev) => ({ ...prev, submit: err?.message || 'İlaç kaydedilemedi, tekrar dene.' }))
+      setSaving(false)
+    }
   }
 
   return (
@@ -84,15 +140,40 @@ export default function AddMedicineScreen({ scanResult, onSave, onCancel }) {
           </div>
         </div>
 
-        <Field label="İlaç adı" error={errors.name}>
-          <input
-            type="text"
-            value={form.name}
-            onChange={update('name')}
-            placeholder="ör. Amoksisilin"
-            className={inputClass(errors.name)}
-          />
-        </Field>
+        <div className="relative">
+          <Field label="İlaç adı" error={errors.name}>
+            <input
+              type="text"
+              value={form.name}
+              onChange={update('name')}
+              onFocus={() => suggestions.length > 0 && setSuggestionsOpen(true)}
+              onBlur={() => setTimeout(() => setSuggestionsOpen(false), 120)}
+              placeholder="ör. Amoksisilin"
+              autoComplete="off"
+              className={inputClass(errors.name)}
+            />
+          </Field>
+
+          {suggestionsOpen && suggestions.length > 0 && (
+            <ul className="absolute left-0 right-0 top-full mt-1.5 z-20 glass-card rounded-2xl overflow-hidden max-h-56 overflow-y-auto">
+              {suggestions.map((item) => (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => handlePickSuggestion(item)}
+                    className="w-full text-left px-4 py-2.5 border-b border-forest-900/[0.06] last:border-b-0"
+                  >
+                    <p className="text-sm font-semibold text-forest-900">{item.productName}</p>
+                    {item.activeIngredient && (
+                      <p className="text-xs text-forest-700/60 truncate">{item.activeIngredient}</p>
+                    )}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
         <div className="grid grid-cols-2 gap-3">
           <Field label="Doz">
@@ -163,15 +244,19 @@ export default function AddMedicineScreen({ scanResult, onSave, onCancel }) {
           />
         </Field>
 
+        {errors.submit && <p className="text-xs text-rose-500 font-medium -mt-2">{errors.submit}</p>}
+
         <button
           type="submit"
-          disabled={saved}
+          disabled={saving || saved}
           className="mt-2 w-full h-14 rounded-2xl bg-forest-600 text-white font-display font-semibold flex items-center justify-center gap-2 shadow-lg shadow-forest-900/20 disabled:opacity-70"
         >
           {saved ? (
             <>
               <CheckIcon /> Dolaba Eklendi
             </>
+          ) : saving ? (
+            'Kaydediliyor…'
           ) : (
             'Dolabıma Ekle'
           )}

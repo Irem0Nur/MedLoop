@@ -89,12 +89,14 @@ from medications.routes import medications_bp
 from notifications.routes import notifications_bp
 from users.routes import users_bp
 from catalog.routes import catalog_bp
+from deliveries.routes import deliveries_bp
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(medications_bp)
 app.register_blueprint(notifications_bp)
 app.register_blueprint(users_bp)
 app.register_blueprint(catalog_bp)
+app.register_blueprint(deliveries_bp)
 
 
 # ============================================================

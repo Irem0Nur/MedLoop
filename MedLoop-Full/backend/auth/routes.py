@@ -21,6 +21,7 @@ from models import User
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+VALID_ROLES = {"citizen", "pharmacist"}
 
 
 @auth_bp.route("/register", methods=["POST"])
@@ -29,16 +30,22 @@ def register():
     email = (payload.get("email") or "").strip().lower()
     password = payload.get("password") or ""
     name = (payload.get("name") or "").strip() or None
+    # "citizen" (vatandaş) veya "pharmacist" (eczacı). Eczacı için `name`
+    # eczane adı olarak kullanılır (RoleSelectionScreen'deki seçime göre
+    # frontend gönderir).
+    role = (payload.get("role") or "citizen").strip().lower()
 
     if not email or not EMAIL_RE.match(email):
         return jsonify({"error": "Geçerli bir e-posta adresi gerekli"}), 400
     if len(password) < 6:
         return jsonify({"error": "Şifre en az 6 karakter olmalı"}), 400
+    if role not in VALID_ROLES:
+        return jsonify({"error": "Geçersiz rol"}), 400
 
     if User.query.filter_by(email=email).first():
         return jsonify({"error": "Bu e-posta ile zaten bir hesap var"}), 409
 
-    user = User(email=email, password_hash=generate_password_hash(password), name=name)
+    user = User(email=email, password_hash=generate_password_hash(password), name=name, role=role)
     db.session.add(user)
     db.session.commit()
 

@@ -8,7 +8,7 @@ import { useCamera } from '../hooks/useCamera.js'
  * bir QR okuyucu deneyimi. Geçerli bir MedLoop teslimat QR'ı bulununca
  * `onScanned` çağrılır.
  *
- * @param {(payload: { type: string, citizenName: string, items: object[] }) => void} onScanned
+ * @param {(payload: { type: string, token: string }) => void} onScanned
  */
 export default function QrScanScreen({ onScanned, onBack }) {
   const { videoRef, status } = useCamera({ facingMode: 'environment' })
@@ -35,7 +35,7 @@ export default function QrScanScreen({ onScanned, onBack }) {
         if (code) {
           try {
             const payload = JSON.parse(code.data)
-            if (payload?.type === 'medloop-delivery' && Array.isArray(payload.items)) {
+            if (payload?.type === 'medloop-delivery' && typeof payload.token === 'string' && payload.token) {
               doneRef.current = true
               onScanned(payload)
               return

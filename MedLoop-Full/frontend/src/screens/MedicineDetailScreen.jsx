@@ -5,13 +5,15 @@ const FORM_OPTIONS = ['Tablet', 'Kapsül', 'Şurup', 'İğne', 'Merhem', 'Damla'
 
 /**
  * @param {object} medicine - düzenlenecek ilaç kaydı
- * @param {(medicine: object) => void} onSave
- * @param {(id: string) => void} onDelete
+ * @param {(medicine: object) => Promise<void>} onSave - backend'e PATCH eder
+ * @param {(id: number) => Promise<void>} onDelete - backend'den DELETE eder
  */
 export default function MedicineDetailScreen({ medicine, onSave, onDelete, onBack }) {
   const [form, setForm] = useState({ ...medicine })
   const [errors, setErrors] = useState({})
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [saved, setSaved] = useState(false)
 
   const status = getExpiryStatus(form.expiryDate)
@@ -31,11 +33,29 @@ export default function MedicineDetailScreen({ medicine, onSave, onDelete, onBac
     return Object.keys(next).length === 0
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!validate()) return
-    onSave?.(form)
-    setSaved(true)
+    setSaving(true)
+    try {
+      await onSave?.(form)
+      setSaved(true)
+    } catch (err) {
+      setErrors((prev) => ({ ...prev, submit: err?.message || 'Kaydedilemedi, tekrar dene.' }))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    setDeleting(true)
+    try {
+      await onDelete?.(form.id)
+    } catch (err) {
+      setDeleting(false)
+      setConfirmingDelete(false)
+      setErrors((prev) => ({ ...prev, submit: err?.message || 'Silinemedi, tekrar dene.' }))
+    }
   }
 
   return (
@@ -111,14 +131,19 @@ export default function MedicineDetailScreen({ medicine, onSave, onDelete, onBac
           <textarea value={form.note} onChange={update('note')} rows={3} className={inputClass() + ' resize-none'} />
         </Field>
 
+        {errors.submit && <p className="text-xs text-rose-500 font-medium -mt-2">{errors.submit}</p>}
+
         <button
           type="submit"
-          className="mt-2 w-full h-14 rounded-2xl bg-forest-600 text-white font-display font-semibold flex items-center justify-center gap-2 shadow-lg shadow-forest-900/20"
+          disabled={saving}
+          className="mt-2 w-full h-14 rounded-2xl bg-forest-600 text-white font-display font-semibold flex items-center justify-center gap-2 shadow-lg shadow-forest-900/20 disabled:opacity-70"
         >
           {saved ? (
             <>
               <CheckIcon /> Kaydedildi
             </>
+          ) : saving ? (
+            'Kaydediliyor…'
           ) : (
             'Değişiklikleri Kaydet'
           )}
@@ -136,16 +161,18 @@ export default function MedicineDetailScreen({ medicine, onSave, onDelete, onBac
               <button
                 type="button"
                 onClick={() => setConfirmingDelete(false)}
-                className="flex-1 h-12 rounded-xl bg-white/80 text-forest-700 font-medium"
+                disabled={deleting}
+                className="flex-1 h-12 rounded-xl bg-white/80 text-forest-700 font-medium disabled:opacity-60"
               >
                 Vazgeç
               </button>
               <button
                 type="button"
-                onClick={() => onDelete?.(form.id)}
-                className="flex-1 h-12 rounded-xl bg-rose-500 text-white font-medium"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 h-12 rounded-xl bg-rose-500 text-white font-medium disabled:opacity-70"
               >
-                Sil
+                {deleting ? 'Siliniyor…' : 'Sil'}
               </button>
             </div>
           </div>

@@ -31,6 +31,9 @@ class User(db.Model):
     email = db.Column(db.String(255), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
     name = db.Column(db.String(120), nullable=True)
+    # "citizen" (vatandaş) | "pharmacist" (eczacı). Eczacı hesaplarında `name`
+    # eczane adı olarak kullanılır (PharmacistHomeScreen.pharmacyName vb.).
+    role = db.Column(db.String(20), nullable=False, default="citizen", index=True)
     points = db.Column(db.Integer, nullable=False, default=0)
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
 
@@ -49,6 +52,7 @@ class User(db.Model):
             "id": self.id,
             "email": self.email,
             "name": self.name,
+            "role": self.role,
             "points": self.points,
             "createdAt": self.created_at.isoformat() if self.created_at else None,
         }
@@ -138,6 +142,57 @@ class DeviceToken(db.Model):
     token = db.Column(db.String(512), unique=True, nullable=False)
     platform = db.Column(db.String(20), nullable=True)  # "android" | "ios" | "web"
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+
+
+class Delivery(db.Model):
+    """Vatandaş -> eczacı QR teslim akışı.
+
+    Vatandaş, teslim etmek istediği ilaçları seçip POST /deliveries/request
+    çağırır; bu bir `token` üretir ve QR koduna gömülür (ilaç verisinin
+    kendisi DEĞİL — sadece bu kısa token, böylece QR küçük kalır ve teslimat
+    sunucu tarafında doğrulanabilir). Eczacı QR'ı okuyup token'ı
+    GET /deliveries/<token> ile görüntüler, sonra POST
+    /deliveries/<token>/confirm ile onaylar. Onayda: ilgili Medication
+    kayıtları 'delivered' olur, vatandaşa puan eklenir ve bildirim gider.
+
+    `items_snapshot`, teslimat talebi oluşturulduğu andaki ilaç bilgilerinin
+    (isim/doz/form/adet) bir kopyasıdır — onay ekranında ve geçmişte
+    Medication tablosuna tekrar join gerekmeden gösterilebilsin diye.
+    """
+
+    __tablename__ = "deliveries"
+
+    id = db.Column(db.Integer, primary_key=True)
+    token = db.Column(db.String(64), unique=True, nullable=False, index=True)
+
+    citizen_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    pharmacist_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True, index=True)
+
+    medication_ids = db.Column(db.JSON, nullable=False)
+    items_snapshot = db.Column(db.JSON, nullable=False)
+
+    # "pending" -> "confirmed" | "expired" | "cancelled"
+    status = db.Column(db.String(20), nullable=False, default="pending", index=True)
+
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    expires_at = db.Column(db.DateTime(timezone=True), nullable=False)
+    confirmed_at = db.Column(db.DateTime(timezone=True), nullable=True)
+
+    citizen = db.relationship("User", foreign_keys=[citizen_id])
+    pharmacist = db.relationship("User", foreign_keys=[pharmacist_id])
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "token": self.token,
+            "citizenName": self.citizen.name if self.citizen else None,
+            "pharmacistName": self.pharmacist.name if self.pharmacist else None,
+            "items": self.items_snapshot,
+            "status": self.status,
+            "createdAt": self.created_at.isoformat() if self.created_at else None,
+            "expiresAt": self.expires_at.isoformat() if self.expires_at else None,
+            "confirmedAt": self.confirmed_at.isoformat() if self.confirmed_at else None,
+        }
 
 
 class MedicationCatalog(db.Model):

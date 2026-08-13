@@ -1,10 +1,13 @@
 import { useState } from 'react'
 
 /**
- * @param {(selectedMedicines: object[]) => void} onGenerateQr
+ * @param {(selectedMedicines: object[]) => Promise<void>} onGenerateQr - backend'e
+ *   POST /deliveries/request atıp QR ekranına geçer (App.jsx)
  */
 export default function DeliverScreen({ medicines, onGenerateQr, onBack }) {
   const [selectedIds, setSelectedIds] = useState(() => new Set())
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
   const toggle = (id) => {
     setSelectedIds((prev) => {
@@ -16,6 +19,17 @@ export default function DeliverScreen({ medicines, onGenerateQr, onBack }) {
   }
 
   const selectedMedicines = medicines.filter((m) => selectedIds.has(m.id))
+
+  const handleGenerate = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      await onGenerateQr(selectedMedicines)
+    } catch (err) {
+      setError(err?.message || 'QR oluşturulamadı, tekrar dene.')
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="app-shell flex flex-col">
@@ -84,12 +98,14 @@ export default function DeliverScreen({ medicines, onGenerateQr, onBack }) {
 
       {selectedMedicines.length > 0 && (
         <div className="absolute bottom-0 inset-x-0 z-10 p-5">
+          {error && <p className="text-xs text-rose-500 font-medium text-center mb-2">{error}</p>}
           <button
             type="button"
-            onClick={() => onGenerateQr(selectedMedicines)}
-            className="w-full h-14 rounded-2xl bg-forest-600 text-white font-display font-semibold flex items-center justify-center gap-2 shadow-lg shadow-forest-900/20"
+            onClick={handleGenerate}
+            disabled={loading}
+            className="w-full h-14 rounded-2xl bg-forest-600 text-white font-display font-semibold flex items-center justify-center gap-2 shadow-lg shadow-forest-900/20 disabled:opacity-70"
           >
-            <QrIcon /> {selectedMedicines.length} İlaç için QR Oluştur
+            <QrIcon /> {loading ? 'Oluşturuluyor…' : `${selectedMedicines.length} İlaç için QR Oluştur`}
           </button>
         </div>
       )}
