@@ -902,7 +902,7 @@ export default function App() {
   return (
     <HomeScreen
       medicines={medicines}
-      userName={authUser?.name}
+      Name={authUser?.name}
       points={authUser?.points ?? 0}
       unreadCount={unreadCount}
       onScan={() => setScreen('scan')}

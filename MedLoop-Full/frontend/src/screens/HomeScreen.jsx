@@ -14,7 +14,7 @@ const QUICK_ACCESS = [
  * @param {number} unreadCount - okunmamış bildirim sayısı (zil rozetinde gösterilir)
  * @param {(key: string) => void} onQuickAccess - Hızlı Erişim kartlarından birine dokunulunca
  */
-export default function HomeScreen({ medicines, points, unreadCount, onScan, onNavigate, onQuickAccess }) {
+export default function HomeScreen({ name, medicines, points, unreadCount, onScan, onNavigate, onQuickAccess }) {
   const soonCount = medicines.filter((m) => getExpiryStatus(m.expiryDate).key === 'soon').length
 
   return (
@@ -22,7 +22,7 @@ export default function HomeScreen({ medicines, points, unreadCount, onScan, onN
       <header className="relative z-10 px-5 pt-6 flex items-center justify-between">
         <div>
           <p className="text-sm text-forest-700/60">Merhaba,</p>
-          <h1 className="font-display font-bold text-forest-900 text-xl">Arya GIM</h1>
+          <h1 className="font-display font-bold text-forest-900 text-xl">{name}</h1>
         </div>
         <button
           type="button"
