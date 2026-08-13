@@ -84,10 +84,6 @@ export default function App() {
   // RoleSelectionScreen'de seçilen rol; RegisterScreen'e taşınır.
   const [pendingRole, setPendingRole] = useState('citizen')
   // RoleSelectionScreen'de seçilen rol; RegisterScreen'e taşınır.
-  const [pendingRole, setPendingRole] = useState('citizen')
-  // Tanıtım ekranları (Onboarding) sadece kullanıcının cihazında hiç
-  // görülmediyse gösterilir — bir kez tamamlandıktan sonra localStorage'a
-  // işaretlenir, sonraki açılışlarda splash'tan direkt role/login'e geçilir.
   const [hasOnboarded] = useState(
     () => typeof window !== 'undefined' && localStorage.getItem('medloop-onboarded') === 'true'
   )
@@ -909,14 +905,14 @@ export default function App() {
   }
 
   return (
-    <HomeScreen
-      medicines={medicines}
-      Name={authUser?.name}
-      points={authUser?.points ?? 0}
-      unreadCount={unreadCount}
-      onScan={() => setScreen('scan')}
-      onNavigate={navigateTo}
-      onQuickAccess={handleQuickAccess}
-    />
-  )
+  <HomeScreen
+    name={authUser?.name}
+    medicines={medicines}
+    points={authUser?.points ?? 0}
+    unreadCount={unreadCount}
+    onScan={() => setScreen('scan')}
+    onNavigate={navigateTo}
+    onQuickAccess={handleQuickAccess}
+  />
+)
 }
