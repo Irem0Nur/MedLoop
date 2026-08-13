@@ -2,6 +2,7 @@
 MedLoop Backend - Kullanıcı endpoint'leri
 ============================================
   GET    /users/me                  -> profil + puan bilgisi
+  PATCH  /users/me                  -> profili günceller (şu an sadece { name })
   GET    /users/me/export           -> KVKK/GDPR tarzı "verilerimi dışa aktar":
                                         hesapla ilişkili tüm verilerin JSON kopyası
   DELETE /users/me                  -> hesabı ve ilişkili tüm verileri kalıcı siler
@@ -25,6 +26,29 @@ users_bp = Blueprint("users", __name__, url_prefix="/users")
 @jwt_required()
 def me():
     user = get_current_user()
+    return jsonify({"user": user.to_dict()})
+
+
+@users_bp.route("/me", methods=["PATCH"])
+@jwt_required()
+def update_me():
+    """Profili günceller. Şu an sadece `name` alanı destekleniyor (Profil
+    ekranındaki "İsmi düzenle"). Eczacı hesaplarında bu ad, eczane adı olarak
+    da kullanılır (bkz. PharmacistHomeScreen)."""
+    user = get_current_user()
+    payload = request.get_json(silent=True) or {}
+
+    if "name" in payload:
+        name = (payload.get("name") or "").strip()
+        if not name:
+            return jsonify({"error": "İsim boş olamaz"}), 400
+        if len(name) > 120:
+            return jsonify({"error": "İsim en fazla 120 karakter olabilir"}), 400
+        user.name = name
+
+    db.session.add(user)
+    db.session.commit()
+
     return jsonify({"user": user.to_dict()})
 
 
