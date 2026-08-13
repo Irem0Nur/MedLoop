@@ -57,6 +57,8 @@ import {
  * Gece Modu ve Tema GERÇEKTİR: <html> öğesine .dark / .theme-* class'ı
  * eklenir. Profil fotoğrafı, eczane adresi/telefonu gibi bazı alanlar
  * backend'de karşılığı olmadığı için hâlâ sadece bu oturumda (yerel) tutulur.
+ * Yasal belgeler (Gizlilik Politikası / Kullanım Koşulları) public/legal/
+ * altındaki statik HTML sayfaları olarak yeni sekmede açılır.
  */
 export default function App() {
   const [screen, setScreen] = useState('splash')
@@ -302,6 +304,14 @@ export default function App() {
     if (key === 'home' || key === 'history') refreshDeliveries()
   }
 
+  // Yasal belgeler (public/legal/*.html) — yeni sekmede açılır.
+  const openPrivacyPolicy = () => {
+    window.open('/legal/privacy-policy.html', '_blank', 'noopener,noreferrer')
+  }
+  const openTerms = () => {
+    window.open('/legal/terms-of-use.html', '_blank', 'noopener,noreferrer')
+  }
+
   const handleQuickAccess = (key) => {
     if (key === 'medicines' || key === 'notifications') navigateTo(key)
     else if (key === 'deliver') setScreen('deliver')
@@ -348,6 +358,13 @@ export default function App() {
 
   const handleScanSuccess = (payload) => {
     setPendingScan(payload)
+    setScreen('add-medicine')
+  }
+
+  // Manuel ilaç ekleme (kamera olmadan) — AddMedicineScreen'i boş bir taslakla
+  // açar; ekran isManual moduna geçip tüm alanları elle doldurmayı sağlar.
+  const handleManualAdd = () => {
+    setPendingScan({ image: null, draft: null })
     setScreen('add-medicine')
   }
 
@@ -486,7 +503,14 @@ export default function App() {
   }
 
   if (screen === 'scan') {
-    return <ScanScreen onBack={() => setScreen('home')} onScanSuccess={handleScanSuccess} onNavigate={navigateTo} />
+    return (
+      <ScanScreen
+        onBack={() => setScreen('home')}
+        onScanSuccess={handleScanSuccess}
+        onManualAdd={handleManualAdd}
+        onNavigate={navigateTo}
+      />
+    )
   }
 
   if (screen === 'add-medicine' && pendingScan) {
@@ -706,7 +730,7 @@ export default function App() {
   }
 
   if (screen === 'about') {
-    return <AboutScreen onBack={() => setScreen('profile')} />
+    return <AboutScreen onBack={() => setScreen('profile')} onPrivacy={openPrivacyPolicy} onTerms={openTerms} />
   }
 
   if (screen === 'help') {

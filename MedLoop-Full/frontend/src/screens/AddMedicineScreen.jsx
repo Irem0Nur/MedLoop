@@ -16,16 +16,18 @@ function splitNameAndDosage(productName) {
 }
 
 /**
- * Tarama başarılı olduğunda açılan ekran. Backend'den (OCR/barkod) gelen
- * taslak bilgileri kullanıcıya gösterir; kullanıcı onaylayıp düzenleyerek
- * ilacı dolabına ekler. İlaç adı yazılırken /catalog/search ile gerçek
- * Türkiye ilaç kataloğundan otomatik tamamlama önerileri gösterilir.
+ * Tarama başarılı olduğunda ya da "Manuel Ekle" seçildiğinde açılan ekran.
+ * Tarama sonrası backend'den (OCR/barkod) gelen taslak bilgileri gösterir;
+ * manuel modda tüm alanlar boş başlar ve kullanıcı elle doldurur. İlaç adı
+ * yazılırken /catalog/search ile gerçek Türkiye ilaç kataloğundan otomatik
+ * tamamlama önerileri gösterilir.
  *
- * @param {{ image: string, draft: object }} scanResult
+ * @param {{ image: string|null, draft: object|null }} scanResult
  * @param {(medicine: object) => Promise<void>} onSave - backend'e POST eder
  */
 export default function AddMedicineScreen({ scanResult, onSave, onCancel }) {
   const { image, draft } = scanResult
+  const isManual = !draft
 
   const [form, setForm] = useState(() => ({
     name: draft?.name ?? '',
@@ -123,7 +125,9 @@ export default function AddMedicineScreen({ scanResult, onSave, onCancel }) {
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </button>
-        <h1 className="font-display font-semibold text-forest-900 text-base">İlaç Bilgilerini Onayla</h1>
+        <h1 className="font-display font-semibold text-forest-900 text-base">
+          {isManual ? 'İlaç Ekle' : 'İlaç Bilgilerini Onayla'}
+        </h1>
         <div className="w-10 h-10" aria-hidden="true" />
       </header>
 
@@ -132,11 +136,15 @@ export default function AddMedicineScreen({ scanResult, onSave, onCancel }) {
           {image ? (
             <img src={image} alt="Taranan ilaç kutusu" className="w-16 h-16 rounded-xl object-cover" />
           ) : (
-            <div className="w-16 h-16 rounded-xl bg-mint-200" />
+            <div className="w-16 h-16 rounded-xl bg-mint-200 flex items-center justify-center text-forest-600">
+              {isManual && <PillIcon />}
+            </div>
           )}
           <div>
-            <p className="text-xs text-forest-700/60 font-medium">Tarandı</p>
-            <p className="text-sm text-forest-900 font-semibold">Bilgileri kontrol edip kaydet</p>
+            <p className="text-xs text-forest-700/60 font-medium">{isManual ? 'Manuel Giriş' : 'Tarandı'}</p>
+            <p className="text-sm text-forest-900 font-semibold">
+              {isManual ? 'İlaç bilgilerini elle gir' : 'Bilgileri kontrol edip kaydet'}
+            </p>
           </div>
         </div>
 
@@ -289,6 +297,14 @@ function CheckIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M20 6 9 17l-5-5" />
+    </svg>
+  )
+}
+function PillIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="9" width="18" height="6" rx="3" transform="rotate(-35 12 12)" />
+      <path d="M9.5 9.5 14.5 14.5" />
     </svg>
   )
 }
