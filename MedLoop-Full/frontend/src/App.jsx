@@ -742,7 +742,7 @@ export default function App() {
 
   if (screen === 'pharmacist-profile') {
     const currentTheme = THEMES.find((t) => t.id === themeId) ?? THEMES[0]
-    const completedDeliveries = deliveries.filter((d) => d.status === 'completed')
+    const completedDeliveries = deliveries.filter((d) => d.status === 'confirmed')
     const totalMedicinesReceived = completedDeliveries.reduce((sum, d) => sum + d.items.length, 0)
     return (
       <PharmacistProfileScreen

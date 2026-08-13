@@ -2,12 +2,15 @@ import PharmacistBottomNav from '../components/PharmacistBottomNav.jsx'
 import { getStockGroups } from '../utils/pharmacyStock.js'
 
 /**
- * @param {Array} deliveries - gerçek teslimat listesi (status: 'pending' | 'completed')
+ * @param {Array} deliveries - backend'den GET /deliveries ile gelen, eczacının
+ *   onayladığı teslimatların geçmişi (hepsi status: 'confirmed' — henüz
+ *   onaylanmamış "pending" teslimatlar güvenlik gereği bu listede yer almaz,
+ *   sadece QR taranıp token doğrulanınca görünür hale gelirler)
  * @param {string} pharmacyName
  */
 export default function PharmacistHomeScreen({ deliveries, pharmacyName, onScanQr, onOpenDelivery, onOpenNotifications, onOpenStats, onNavigate }) {
   const pending = deliveries.filter((d) => d.status === 'pending')
-  const completed = deliveries.filter((d) => d.status === 'completed')
+  const completed = deliveries.filter((d) => d.status === 'confirmed')
   const today = new Date().toDateString()
   const completedToday = completed.filter((d) => new Date(d.confirmedAt).toDateString() === today).length
   const totalDeliveredItems = completed.reduce((sum, d) => sum + d.items.length, 0)
