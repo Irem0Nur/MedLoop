@@ -17,7 +17,7 @@ export function getStockGroups(deliveries) {
   const groups = new Map()
 
   deliveries
-    .filter((d) => d.status === 'completed' && !d.disposedAt)
+    .filter((d) => d.status === 'confirmed' && !d.disposedAt)
     .forEach((d) => {
       d.items.forEach((item) => {
         const key = item.name.trim().toLowerCase()
@@ -78,7 +78,7 @@ export function getDisposedGroups(deliveries) {
   const groups = new Map()
 
   deliveries
-    .filter((d) => d.status === 'completed' && d.disposedAt)
+    .filter((d) => d.status === 'confirmed' && d.disposedAt)
     .forEach((d) => {
       d.items.forEach((item) => {
         const key = item.name.trim().toLowerCase()

@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import QRCode from 'qrcode'
 
 /**
- * QR koduna sadece teslimat kimliğini (deliveryId) gömer — tıpkı gerçek
- * dünyadaki referans QR'lar gibi. Teslimatın kendisi (ilaçlar, vatandaş adı)
- * zaten App.jsx'teki paylaşılan `deliveries` state'inde "pending" durumda
- * duruyor; eczacı taradığında oradan bulunup onaylanıyor.
+ * QR koduna sadece backend'in ürettiği kısa ömürlü `token`'ı gömer (ilaç
+ * verisi ya da vatandaş bilgisi QR'da DEĞİL — güvenlik için). Eczacı
+ * taradığında bu token'la GET /deliveries/<token> çağrılıp teslimat sunucu
+ * tarafında doğrulanır (bkz. QrScanScreen, DeliveryConfirmScreen).
  *
- * @param {object} delivery - App.jsx'te zaten oluşturulmuş, "pending" durumdaki teslimat kaydı
+ * @param {object} delivery - POST /deliveries/request'ten dönen "pending" teslimat kaydı ({ token, items, ... })
  */
 export default function DeliveryQRScreen({ delivery, onBack }) {
   const canvasRef = useRef(null)
@@ -15,7 +15,7 @@ export default function DeliveryQRScreen({ delivery, onBack }) {
 
   const qrPayload = {
     type: 'medloop-delivery',
-    deliveryId: delivery.id,
+    token: delivery.token,
   }
 
   useEffect(() => {

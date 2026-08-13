@@ -70,11 +70,24 @@ body {
   width: 100%;
   max-width: 480px;
   margin-inline: auto;
+  height: 100dvh;
   min-height: 100dvh;
   position: relative;
   overflow: hidden;
   background: radial-gradient(120% 90% at 50% 0%, #d9f0e0 0%, var(--color-mint-50) 45%, var(--color-mint-100) 100%);
 }
+
+/* Flexbox'ın bilinen "min-height: auto" davranışı yüzünden, app-shell
+   içindeki flex-1 + overflow-y-auto bölümler bazen içerik kadar büyüyüp
+   app-shell'i ekran boyundan taşırabiliyordu — bu da alt gezinme çubuğunun
+   (absolute bottom-0) gerçek ekranın değil, o taşan kutunun altında,
+   görünmez şekilde kalmasına yol açıyordu. Doğrudan çocuklara min-height:0
+   vermek bu taşmayı engelleyip iç scroll'un doğru çalışmasını sağlıyor,
+   böylece alt çubuk her zaman gerçekten ekranın altında sabit kalıyor. */
+.app-shell > * {
+  min-height: 0;
+}
+
 
 /* Erişilebilirlik: azaltılmış hareket tercih edenler için */
 @media (prefers-reduced-motion: reduce) {

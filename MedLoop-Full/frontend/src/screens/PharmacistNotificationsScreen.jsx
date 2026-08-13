@@ -6,7 +6,7 @@ export default function PharmacistNotificationsScreen({ deliveries, onOpenDelive
   const critical = stockGroups.filter((g) => g.isCritical)
   const expiring = stockGroups.filter((g) => g.worstExpiryStatus !== 'safe')
   const recentCompleted = [...deliveries]
-    .filter((d) => d.status === 'completed')
+    .filter((d) => d.status === 'confirmed')
     .sort((a, b) => new Date(b.confirmedAt) - new Date(a.confirmedAt))
     .slice(0, 5)
 

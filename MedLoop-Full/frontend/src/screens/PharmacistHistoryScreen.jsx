@@ -4,7 +4,7 @@ import PharmacistBottomNav from '../components/PharmacistBottomNav.jsx'
 const FILTERS = [
   { key: 'all', label: 'Tümü' },
   { key: 'pending', label: 'Bekleyen' },
-  { key: 'completed', label: 'Tamamlanan' },
+  { key: 'confirmed', label: 'Tamamlanan' },
 ]
 
 export default function PharmacistHistoryScreen({ deliveries, onOpenDelivery, onNavigate }) {

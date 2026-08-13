@@ -109,4 +109,10 @@ export const deliveriesApi = {
 
 export const usersApi = {
   me: () => request('/users/me'),
+  // Gizlilik ekranındaki "Verilerimi dışa aktar" — hesapla ilişkili tüm
+  // verilerin (profil, ilaçlar, bildirimler, teslimatlar) JSON kopyası.
+  exportData: () => request('/users/me/export'),
+  // Gizlilik ekranındaki "Hesabımı sil" — hesabı ve ilişkili tüm verileri
+  // backend'de kalıcı olarak siler. Geri alınamaz.
+  deleteAccount: () => request('/users/me', { method: 'DELETE' }),
 }

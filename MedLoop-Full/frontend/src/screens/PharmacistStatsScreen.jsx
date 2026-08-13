@@ -10,7 +10,7 @@ const RANGES = [
 
 export default function PharmacistStatsScreen({ deliveries, onBack }) {
   const [range, setRange] = useState('daily')
-  const completed = useMemo(() => deliveries.filter((d) => d.status === 'completed'), [deliveries])
+  const completed = useMemo(() => deliveries.filter((d) => d.status === 'confirmed'), [deliveries])
 
   const chartData = useMemo(() => buildChartData(completed, range), [completed, range])
 

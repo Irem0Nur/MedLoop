@@ -152,7 +152,7 @@ export default function MedicineDetailScreen({ medicine, onSave, onDelete, onBac
 
       {confirmingDelete && (
         <div className="absolute inset-0 z-30 bg-forest-900/40 flex items-end" role="dialog" aria-modal="true">
-          <div className="app-shell !min-h-0 !overflow-visible bg-mint-50 rounded-t-3xl p-6 flex flex-col gap-4">
+          <div className="app-shell !h-auto !min-h-0 !overflow-visible bg-mint-50 rounded-t-3xl p-6 flex flex-col gap-4">
             <h2 className="font-display font-bold text-forest-900 text-lg">İlacı sil?</h2>
             <p className="text-sm text-forest-700/70">
               "{form.name}" dolabından kaldırılacak. Bu işlem geri alınamaz.
