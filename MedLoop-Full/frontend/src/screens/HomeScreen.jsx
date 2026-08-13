@@ -102,6 +102,7 @@ const ECO_SLOGANS = [
  */
 export default function HomeScreen({
   medicines,
+  userName,
   points,
   unreadCount,
   onScan,
@@ -120,7 +121,7 @@ export default function HomeScreen({
           <p className="text-sm text-forest-700/60">Merhaba,</p>
 
           <h1 className="font-display font-bold text-forest-900 text-xl">
-            Arya GİM
+            {userName || 'MedLoop'}
           </h1>
         </div>
 
