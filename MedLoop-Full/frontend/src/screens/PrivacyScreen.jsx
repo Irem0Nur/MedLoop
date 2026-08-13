@@ -697,7 +697,7 @@ export default function PrivacyScreen({
           aria-labelledby="clear-data-title"
         >
 
-          <div className="app-shell !min-h-0 !overflow-visible bg-mint-50 rounded-t-3xl p-6 flex flex-col gap-4 shadow-xl">
+          <div className="app-shell !h-auto !min-h-0 !overflow-visible bg-mint-50 rounded-t-3xl p-6 flex flex-col gap-4">
 
             <div className="w-12 h-1 rounded-full bg-forest-900/10 mx-auto mb-1" />
 

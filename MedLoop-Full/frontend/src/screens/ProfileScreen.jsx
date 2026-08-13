@@ -159,7 +159,7 @@ export default function ProfileScreen({
           onClick={() => setAvatarSheetOpen(false)}
         >
           <div
-            className="app-shell !min-h-0 !overflow-visible bg-mint-50 rounded-t-3xl p-6 flex flex-col gap-3"
+            className="app-shell !h-auto !min-h-0 !overflow-visible bg-mint-50 rounded-t-3xl p-6 flex flex-col gap-3"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="font-display font-bold text-forest-900 text-lg mb-1">Profil Fotoğrafı</h2>
