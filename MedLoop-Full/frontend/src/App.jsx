@@ -997,6 +997,8 @@ export default function App() {
 <<<<<<< ours
     return (
       <ProfileScreen
+        name={authUser?.name}
+        email={authUser?.email}
         points={authUser?.points ?? 0}
         medicinesCount={medicines.length}
         totalDelivered={deliveredCount}
@@ -1105,6 +1107,7 @@ export default function App() {
   return (
     <HomeScreen
       medicines={medicines}
+      userName={authUser?.name}
       points={authUser?.points ?? 0}
       unreadCount={unreadCount}
       onScan={() => setScreen('scan')}

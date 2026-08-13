@@ -15,6 +15,8 @@ import BottomNav from '../components/BottomNav.jsx'
  * @param {() => void} onLogout - rol seçim ekranına gerçekten geri döner
  */
 export default function ProfileScreen({
+  name,
+  email,
   points,
   medicinesCount,
   totalDelivered,
@@ -84,8 +86,8 @@ export default function ProfileScreen({
               <CameraIcon />
             </button>
           </div>
-          <h2 className="font-display font-bold text-forest-900 text-lg mt-3">Arya GIM</h2>
-          <p className="text-sm text-forest-700/60">arya.gim@email.com</p>
+          <h2 className="font-display font-bold text-forest-900 text-lg mt-3">{name || 'Kullanıcı'}</h2>
+          <p className="text-sm text-forest-700/60">{email}</p>
 
           <div className="grid grid-cols-3 gap-3 w-full mt-5">
             <StatBox value={points} label="MedLoop Puanı" />
