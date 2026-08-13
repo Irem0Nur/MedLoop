@@ -1,5 +1,6 @@
 export default function PharmacistDeliveryDetailScreen({ delivery, onBack }) {
   const totalQuantity = delivery.items.reduce((sum, i) => sum + (i.quantity ?? 0), 0)
+  const isPending = delivery.status === 'pending'
 
   return (
     <div className="app-shell flex flex-col">
@@ -19,19 +20,37 @@ export default function PharmacistDeliveryDetailScreen({ delivery, onBack }) {
 
       <div className="relative z-10 flex-1 overflow-y-auto px-5 mt-5 pb-10 flex flex-col gap-5">
         <div className="glass-card rounded-3xl p-6 flex flex-col items-center text-center">
-          <span className="w-16 h-16 rounded-full bg-forest-600 text-white flex items-center justify-center mb-3">
-            <CheckIcon />
+          <span
+            className={`w-16 h-16 rounded-full flex items-center justify-center mb-3 ${
+              isPending ? 'bg-amber-100 text-amber-400' : 'bg-forest-600 text-white'
+            }`}
+          >
+            {isPending ? <ClockIcon /> : <CheckIcon />}
+          </span>
+          <span
+            className={`text-[11px] font-semibold px-2.5 py-1 rounded-full mb-2 ${
+              isPending ? 'bg-amber-100 text-amber-400' : 'bg-sage-100 text-sage-400'
+            }`}
+          >
+            {isPending ? 'Bekliyor' : 'Tamamlandı'}
           </span>
           <h2 className="font-display font-bold text-forest-900 text-lg">{delivery.citizenName ?? 'Vatandaş'}</h2>
           <p className="text-xs text-forest-700/60 mt-1">
-            {new Date(delivery.confirmedAt).toLocaleString('tr-TR', {
-              day: '2-digit',
-              month: 'long',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
+            {isPending
+              ? `QR oluşturuldu: ${new Date(delivery.createdAt).toLocaleString('tr-TR', { day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit' })}`
+              : new Date(delivery.confirmedAt).toLocaleString('tr-TR', {
+                  day: '2-digit',
+                  month: 'long',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
           </p>
+          {isPending && (
+            <p className="text-xs text-amber-400 font-medium mt-2">
+              Bu teslimat henüz QR ile onaylanmadı.
+            </p>
+          )}
 
           <div className="grid grid-cols-2 gap-3 w-full mt-5">
             <StatBox value={delivery.items.length} label="İlaç Çeşidi" />
@@ -41,7 +60,7 @@ export default function PharmacistDeliveryDetailScreen({ delivery, onBack }) {
 
         <div>
           <h3 className="text-xs font-semibold text-forest-700/60 uppercase tracking-wide mb-3">
-            Teslim Edilen İlaçlar
+            {isPending ? 'Teslim Edilecek İlaçlar' : 'Teslim Edilen İlaçlar'}
           </h3>
           <ul className="flex flex-col gap-2">
             {delivery.items.map((item) => (
@@ -72,6 +91,13 @@ function CheckIcon() {
   return (
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M20 6 9 17l-5-5" />
+    </svg>
+  )
+}
+function ClockIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3.5 2" />
     </svg>
   )
 }

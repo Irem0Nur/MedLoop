@@ -2,33 +2,31 @@ import { useEffect, useRef, useState } from 'react'
 import QRCode from 'qrcode'
 
 /**
- * Vatandaş seçtiği ilaçlar için backend'e POST /deliveries/request atar
- * (bkz. App.jsx handleGenerateQr); dönen kısa ömürlü `token` QR koduna
- * gömülür. Eczacı bu QR'ı gerçek kamerayla (jsQR) okur — bkz.
- * QrScanScreen.jsx — ve token backend'de GET/POST /deliveries/<token>
- * ile doğrulanır. QR'ın içinde ilaç verisi YOK, sadece token var; bu
- * yüzden onay sunucu tarafında gerçekten gerçekleşir (sahte QR üretilemez).
+ * QR koduna sadece teslimat kimliğini (deliveryId) gömer — tıpkı gerçek
+ * dünyadaki referans QR'lar gibi. Teslimatın kendisi (ilaçlar, vatandaş adı)
+ * zaten App.jsx'teki paylaşılan `deliveries` state'inde "pending" durumda
+ * duruyor; eczacı taradığında oradan bulunup onaylanıyor.
  *
- * @param {{ token: string, items: object[], expiresAt: string }} delivery
+ * @param {object} delivery - App.jsx'te zaten oluşturulmuş, "pending" durumdaki teslimat kaydı
  */
 export default function DeliveryQRScreen({ delivery, onBack }) {
   const canvasRef = useRef(null)
   const [error, setError] = useState(false)
 
-  const payload = { type: 'medloop-delivery', token: delivery?.token }
+  const qrPayload = {
+    type: 'medloop-delivery',
+    deliveryId: delivery.id,
+  }
 
   useEffect(() => {
-    if (!canvasRef.current || !delivery?.token) return
-    QRCode.toCanvas(canvasRef.current, JSON.stringify(payload), {
+    if (!canvasRef.current) return
+    QRCode.toCanvas(canvasRef.current, JSON.stringify(qrPayload), {
       width: 256,
       margin: 1,
       color: { dark: '#0e2e20', light: '#ffffff' },
     }).catch(() => setError(true))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [delivery?.token])
-
-  const items = delivery?.items ?? []
-  const expiresAt = delivery?.expiresAt ? new Date(delivery.expiresAt) : null
+  }, [])
 
   return (
     <div className="app-shell flex flex-col">
@@ -48,7 +46,7 @@ export default function DeliveryQRScreen({ delivery, onBack }) {
 
       <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-8 gap-6">
         <div className="glass-card rounded-3xl p-6 flex items-center justify-center">
-          {error || !delivery?.token ? (
+          {error ? (
             <p className="text-sm text-rose-500 w-64 text-center">QR kod oluşturulamadı, geri dönüp tekrar dene.</p>
           ) : (
             <canvas ref={canvasRef} className="rounded-xl" />
@@ -58,17 +56,15 @@ export default function DeliveryQRScreen({ delivery, onBack }) {
         <div className="text-center">
           <p className="text-sm font-semibold text-forest-900">Bu QR kodu eczacıya göster</p>
           <p className="text-xs text-forest-700/60 mt-1">
-            {items.length} ilaç · eczacı QR Tara ile onayladığında dolabından düşer ve puan kazanırsın.
+            {delivery.items.length} ilaç · eczacı QR Tara ile onayladığında dolabından düşer ve puan kazanırsın.
           </p>
-          {expiresAt && (
-            <p className="text-[11px] text-forest-700/45 mt-1">
-              QR {expiresAt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}'e kadar geçerli.
-            </p>
-          )}
+          <span className="inline-block mt-2 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-amber-100 text-amber-400">
+            Bekliyor
+          </span>
         </div>
 
         <ul className="w-full flex flex-col gap-2">
-          {items.map((m) => (
+          {delivery.items.map((m) => (
             <li key={m.id} className="glass-card rounded-xl px-4 py-2.5 flex items-center justify-between">
               <span className="text-sm font-medium text-forest-900">{m.name}</span>
               <span className="text-xs text-forest-700/60">{m.quantity} adet</span>

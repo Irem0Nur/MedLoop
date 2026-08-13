@@ -5,12 +5,14 @@ import { useCamera } from '../hooks/useCamera.js'
 /**
  * İlaç Tara'daki tek-karelik yakalamadan farklı olarak, burada video akışı
  * her animasyon karesinde taranır (requestAnimationFrame + jsQR) — gerçek
- * bir QR okuyucu deneyimi. Geçerli bir MedLoop teslimat QR'ı bulununca
+ * bir QR okuyucu deneyimi. QR yalnızca bir teslimat kimliği taşır; bu kimlik
+ * `deliveries` listesindeki gerçek (paylaşılan) "pending" kayıtla eşleşince
  * `onScanned` çağrılır.
  *
- * @param {(payload: { type: string, token: string }) => void} onScanned
+ * @param {Array} deliveries - App.jsx'teki gerçek teslimat listesi (doğrulama için)
+ * @param {(delivery: object) => void} onScanned
  */
-export default function QrScanScreen({ onScanned, onBack }) {
+export default function QrScanScreen({ deliveries, onScanned, onBack }) {
   const { videoRef, status } = useCamera({ facingMode: 'environment' })
   const [scanError, setScanError] = useState(null)
   const canvasRef = useRef(document.createElement('canvas'))
@@ -35,12 +37,20 @@ export default function QrScanScreen({ onScanned, onBack }) {
         if (code) {
           try {
             const payload = JSON.parse(code.data)
-            if (payload?.type === 'medloop-delivery' && typeof payload.token === 'string' && payload.token) {
-              doneRef.current = true
-              onScanned(payload)
-              return
+            if (payload?.type === 'medloop-delivery' && payload.deliveryId) {
+              const delivery = deliveries.find((d) => d.id === payload.deliveryId)
+              if (!delivery) {
+                setScanError('Bu teslimat bulunamadı.')
+              } else if (delivery.status !== 'pending') {
+                setScanError('Bu teslimat zaten onaylanmış.')
+              } else {
+                doneRef.current = true
+                onScanned(delivery)
+                return
+              }
+            } else {
+              setScanError('Bu QR kod bir MedLoop teslimatı değil.')
             }
-            setScanError('Bu QR kod bir MedLoop teslimatı değil.')
           } catch {
             setScanError('QR kod okunamadı, tekrar dene.')
           }
@@ -53,7 +63,7 @@ export default function QrScanScreen({ onScanned, onBack }) {
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
     }
-  }, [status, videoRef, onScanned])
+  }, [status, videoRef, onScanned, deliveries])
 
   return (
     <div className="app-shell flex flex-col bg-night-900">

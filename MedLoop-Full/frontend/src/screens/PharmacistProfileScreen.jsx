@@ -2,7 +2,7 @@ import { useState } from 'react'
 import PharmacistBottomNav from '../components/PharmacistBottomNav.jsx'
 
 /**
- * @param {{ name: string, address: string, phone: string }} pharmacyProfile
+ * @param {{ name, address, phone, pharmacistName, workingHours }} pharmacyProfile
  * @param {(profile: object) => void} onUpdateProfile - gerçekten kaydeder (App.jsx state'i)
  * @param {number} totalDeliveries
  * @param {number} totalMedicines
@@ -72,6 +72,20 @@ export default function PharmacistProfileScreen({
                   placeholder="Telefon"
                   className={inputClass()}
                 />
+                <input
+                  type="text"
+                  value={draft.pharmacistName ?? ''}
+                  onChange={(e) => setDraft((d) => ({ ...d, pharmacistName: e.target.value }))}
+                  placeholder="Mesul eczacı adı"
+                  className={inputClass()}
+                />
+                <input
+                  type="text"
+                  value={draft.workingHours ?? ''}
+                  onChange={(e) => setDraft((d) => ({ ...d, workingHours: e.target.value }))}
+                  placeholder="Çalışma saatleri (ör. Pzt–Cmt 09:00–19:00)"
+                  className={inputClass()}
+                />
                 <div className="flex gap-2 mt-1">
                   <button
                     type="button"
@@ -104,6 +118,29 @@ export default function PharmacistProfileScreen({
               </>
             )}
           </div>
+
+          {!editing && (pharmacyProfile.pharmacistName || pharmacyProfile.workingHours) && (
+            <div className="mt-5 pt-4 border-t border-forest-900/[0.06] flex flex-col gap-2.5">
+              {pharmacyProfile.pharmacistName && (
+                <div className="flex items-center gap-2.5">
+                  <span className="text-forest-700/50 shrink-0"><PersonIcon /></span>
+                  <div>
+                    <p className="text-[10px] text-forest-700/50 uppercase tracking-wide">Mesul Eczacı</p>
+                    <p className="text-sm text-forest-900">{pharmacyProfile.pharmacistName}</p>
+                  </div>
+                </div>
+              )}
+              {pharmacyProfile.workingHours && (
+                <div className="flex items-center gap-2.5">
+                  <span className="text-forest-700/50 shrink-0"><ClockIcon /></span>
+                  <div>
+                    <p className="text-[10px] text-forest-700/50 uppercase tracking-wide">Çalışma Saatleri</p>
+                    <p className="text-sm text-forest-900">{pharmacyProfile.workingHours}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3 w-full mt-5">
             <StatBox value={totalDeliveries} label="Toplam Teslimat" />
@@ -216,6 +253,20 @@ function ChevronIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-forest-700/30 shrink-0">
       <path d="m9 18 6-6-6-6" />
+    </svg>
+  )
+}
+function PersonIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 4-6 8-6s8 2 8 6" />
+    </svg>
+  )
+}
+function ClockIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3.5 2" />
     </svg>
   )
 }
