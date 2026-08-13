@@ -28,6 +28,11 @@ export default function PrivacyScreen({
   const [exported, setExported] = useState(false)
   const [accountDeleted, setAccountDeleted] = useState(false)
 
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState(null)
+  const [deletingAccount, setDeletingAccount] = useState(false)
+  const [deleteAccountError, setDeleteAccountError] = useState(null)
+
   const [showPermissions, setShowPermissions] = useState(false)
   const [showSecurity, setShowSecurity] = useState(false)
   const [showOcrInfo, setShowOcrInfo] = useState(false)
@@ -69,48 +74,47 @@ export default function PrivacyScreen({
      VERİLERİ DIŞA AKTAR
   ============================================================ */
 
-  const handleExportData = () => {
+  const handleExportData = async () => {
     /*
-     * Backend entegrasyonu:
-     *
-     * Kullanıcı verilerinin JSON / ZIP / PDF gibi
-     * bir formatta hazırlanması için:
-     *
-     * onExportData?.()
-     *
-     * kullanılabilir.
+     * onExportData, App.jsx üzerinden GET /users/me/export'u çağırıp
+     * dönen JSON'ı bir dosya olarak indirtir. Burada sadece sonucu
+     * (başarı/hata) yönetiyoruz.
      */
+    setExporting(true)
+    setExportError(null)
 
-    onExportData?.()
-
-    setExported(true)
-
-    setTimeout(() => {
-      setExported(false)
-    }, 2500)
+    try {
+      await onExportData?.()
+      setExported(true)
+      setTimeout(() => setExported(false), 2500)
+    } catch (err) {
+      setExportError(err?.message || 'Verileriniz dışa aktarılamadı, tekrar deneyin.')
+    } finally {
+      setExporting(false)
+    }
   }
 
   /* ============================================================
      HESABI SİL
   ============================================================ */
 
-  const handleDeleteAccount = () => {
+  const handleDeleteAccount = async () => {
     /*
-     * Backend hazır olduğunda:
-     *
-     * onDeleteAccount?.()
-     *
-     * gerçek hesap silme API'sini çalıştırabilir.
+     * onDeleteAccount, App.jsx üzerinden DELETE /users/me'yi çağırır ve
+     * başarılı olursa kısa bir süre sonra oturumu kapatıp rol seçim
+     * ekranına döner (bu ekran o sırada zaten unmount olur).
      */
+    setDeletingAccount(true)
+    setDeleteAccountError(null)
 
-    onDeleteAccount?.()
-
-    setConfirmingAccountDelete(false)
-    setAccountDeleted(true)
-
-    setTimeout(() => {
-      setAccountDeleted(false)
-    }, 3000)
+    try {
+      await onDeleteAccount?.()
+      setConfirmingAccountDelete(false)
+      setAccountDeleted(true)
+    } catch (err) {
+      setDeleteAccountError(err?.message || 'Hesap silinemedi, tekrar deneyin.')
+      setDeletingAccount(false)
+    }
   }
 
   /* ============================================================
@@ -467,10 +471,13 @@ export default function PrivacyScreen({
             <ActionRow
               icon="📤"
               title="Verilerimi dışa aktar"
-              description="MedLoop hesabınızda kayıtlı verilerinizin bir kopyasını talep edin."
+              description={exportError || 'MedLoop hesabınızda kayıtlı verilerinizin bir kopyasını talep edin.'}
+              descriptionClassName={exportError ? 'text-rose-500' : undefined}
               onClick={handleExportData}
+              disabled={exporting}
+              loading={exporting}
               success={exported}
-              successText="Verileriniz hazırlandı ✓"
+              successText="Verileriniz indirildi ✓"
             />
 
 
@@ -790,12 +797,19 @@ export default function PrivacyScreen({
 
             </div>
 
+            {deleteAccountError && (
+              <p className="text-xs text-rose-500 font-medium">
+                {deleteAccountError}
+              </p>
+            )}
+
             <div className="flex gap-3 mt-2">
 
               <button
                 type="button"
                 onClick={() => setConfirmingAccountDelete(false)}
-                className="flex-1 h-12 rounded-xl bg-white/80 text-forest-700 font-medium"
+                disabled={deletingAccount}
+                className="flex-1 h-12 rounded-xl bg-white/80 text-forest-700 font-medium disabled:opacity-60"
               >
                 Vazgeç
               </button>
@@ -803,9 +817,10 @@ export default function PrivacyScreen({
               <button
                 type="button"
                 onClick={handleDeleteAccount}
-                className="flex-1 h-12 rounded-xl bg-rose-500 text-white font-semibold"
+                disabled={deletingAccount}
+                className="flex-1 h-12 rounded-xl bg-rose-500 text-white font-semibold disabled:opacity-70"
               >
-                Hesabımı Sil
+                {deletingAccount ? 'Siliniyor…' : 'Hesabımı Sil'}
               </button>
 
             </div>
@@ -1090,7 +1105,10 @@ function ActionRow({
   icon,
   title,
   description,
+  descriptionClassName,
   onClick,
+  disabled = false,
+  loading = false,
   success,
   successText,
 }) {
@@ -1098,7 +1116,8 @@ function ActionRow({
     <button
       type="button"
       onClick={onClick}
-      className="w-full text-left p-5 flex items-center gap-3"
+      disabled={disabled}
+      className="w-full text-left p-5 flex items-center gap-3 disabled:opacity-60"
     >
 
       <div className="w-10 h-10 rounded-xl bg-white/70 flex items-center justify-center shrink-0">
@@ -1110,17 +1129,17 @@ function ActionRow({
       <div className="flex-1 min-w-0">
 
         <h3 className="text-sm font-semibold text-forest-900">
-          {success ? successText : title}
+          {loading ? 'Hazırlanıyor…' : success ? successText : title}
         </h3>
 
-        <p className="text-[11px] text-forest-700/55 leading-relaxed mt-1">
+        <p className={`text-[11px] leading-relaxed mt-1 ${descriptionClassName || 'text-forest-700/55'}`}>
           {description}
         </p>
 
       </div>
 
       <span className="text-forest-700 shrink-0">
-        {success ? '✓' : '→'}
+        {loading ? '…' : success ? '✓' : '→'}
       </span>
 
     </button>

@@ -435,6 +435,33 @@ export default function App() {
     await refreshNotifications()
   }
 
+  // Gizlilik ekranındaki "Verilerimi dışa aktar": backend'den hesapla
+  // ilişkili tüm verilerin (profil, ilaçlar, bildirimler, teslimatlar) JSON
+  // kopyasını çeker ve tarayıcıda bir dosya olarak indirtir. Hata fırlarsa
+  // PrivacyScreen kendi hata mesajını gösterir (bu yüzden burada try/catch yok).
+  const handleExportData = async () => {
+    const data = await usersApi.exportData()
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const stamp = new Date().toISOString().slice(0, 10)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `medloop-verilerim-${stamp}.json`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+  }
+
+  // Gizlilik ekranındaki "Hesabımı sil": backend'de hesabı ve ilişkili tüm
+  // verileri kalıcı olarak siler. Başarılı olursa PrivacyScreen kısa bir onay
+  // gösterir; biz de az sonra gerçek çıkışı yapıp rol seçim ekranına döneriz
+  // (hata durumunda handleLogout hiç çağrılmaz, PrivacyScreen hatayı gösterir).
+  const handleDeleteAccount = async () => {
+    await usersApi.deleteAccount()
+    setTimeout(() => handleLogout(), 1200)
+  }
+
   if (screen === 'splash') {
     return <SplashScreen onFinish={() => setScreen('onboarding')} />
   }
@@ -728,7 +755,14 @@ export default function App() {
   }
 
   if (screen === 'privacy') {
-    return <PrivacyScreen onClearData={handleClearAllData} onBack={() => setScreen('profile')} />
+    return (
+      <PrivacyScreen
+        onClearData={handleClearAllData}
+        onExportData={handleExportData}
+        onDeleteAccount={handleDeleteAccount}
+        onBack={() => setScreen('profile')}
+      />
+    )
   }
 
   if (screen === 'about') {
