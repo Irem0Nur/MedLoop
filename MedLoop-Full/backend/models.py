@@ -158,7 +158,11 @@ class MedicationCatalog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     barcode = db.Column(db.String(32), nullable=False, index=True)
     atc_code = db.Column(db.String(16), nullable=True)
-    active_ingredient = db.Column(db.String(255), nullable=True)
+    # Bazı kayıtlarda birden fazla etken madde virgülle/artı işaretiyle
+    # birleştirilmiş şekilde geliyor ve 255 karakteri aşabiliyor (gerçek veri
+    # setinde en uzunu 435 karakter) — Postgres String(255)'i SQLite'ın
+    # aksine sıkı uyguladığı için burada Text kullanmak daha güvenli.
+    active_ingredient = db.Column(db.Text, nullable=True)
     product_name = db.Column(db.String(255), nullable=False, index=True)
     category_path = db.Column(db.String(512), nullable=True)
     description = db.Column(db.Text, nullable=True)
