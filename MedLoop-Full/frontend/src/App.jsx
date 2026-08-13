@@ -30,9 +30,11 @@ import { THEMES } from './data/themes.js'
 
 // Her başarılı ilaç ekleme işleminde kazanılan gerçek MedLoop puanı.
 const POINTS_PER_MEDICINE = 20
+
 // Eczacı bir teslimatı onayladığında ilaç başına kazanılan bonus puan
 // (geri dönüşüm/güvenli imha teşviki — ekleme puanından daha yüksek).
 const DELIVERY_POINTS_PER_MEDICINE = 30
+
 // Demo kullanıcı adı — gerçek kimlik doğrulama olmadığı için sabit.
 const CITIZEN_NAME = 'Ahmet Yılmaz'
 
@@ -42,17 +44,10 @@ const CITIZEN_NAME = 'Ahmet Yılmaz'
  * home / medicines / scan / notifications / profile arası geçiş alt
  * gezinme çubuğu (navigateTo) ile. Eczacı tarafı kendi çubuğuna sahip
  * (pharmacistNavigateTo): pharmacist-home / pharmacist-history / pharmacist-profile.
- * "Teslim Et" ve "Başarılarım" (Hızlı Erişim'den) henüz kendi özellikleri
- * geliştirilmemiş placeholder ekranlardır. Profil > Ayarlar'daki tüm
- * satırlar (Tema dahil) artık gerçek ekranlara sahip.
- * Gece Modu ve Tema GERÇEKTİR: <html> öğesine .dark / .theme-* class'ı
- * eklenir, index.css içindeki token'lar bu sayede tüm ekranlarda otomatik
- * değişir. Profil fotoğrafı kamera/galeriden gerçekten seçilebilir.
- * Eczacı QR akışı GERÇEKTİR: qrcode ile üretilir, jsqr ile gerçek kamerayla
- * okunur; onaylanan teslimat vatandaşın (aynı oturumdaki) dolabından
- * gerçekten düşer ve puan/sayaç günceller.
- * Gerçek bir router (react-router vb.) backend/routing kararlarıyla birlikte
- * eklenebilir; şimdilik odak bu akışın kendisi.
+ * Profil > Ayarlar'daki tüm satırlar (Tema dahil) gerçek ekranlara sahiptir.
+ * Gece Modu ve Tema <html> öğesine class eklenerek uygulanır.
+ * Profil fotoğrafı kamera/galeriden seçilebilir.
+ * Eczacı QR akışı qrcode ve jsqr ile çalışır.
  */
 export default function App() {
   const [screen, setScreen] = useState('splash')
@@ -62,126 +57,257 @@ export default function App() {
   const [activeMedicineId, setActiveMedicineId] = useState(null)
   const [readNotificationIds, setReadNotificationIds] = useState(() => new Set())
   const [points, setPoints] = useState(0)
+
   const [isDarkMode, setIsDarkMode] = useState(
-    () => typeof window !== 'undefined' && localStorage.getItem('medloop-dark-mode') === 'true'
+    () =>
+      typeof window !== 'undefined' &&
+      localStorage.getItem('medloop-dark-mode') === 'true'
   )
-  const [unlockedAchievements, setUnlockedAchievements] = useState(() => new Set())
+
+  const [unlockedAchievements, setUnlockedAchievements] = useState(
+    () => new Set()
+  )
+
   // "achievements" ekranı hem Ana Sayfa Hızlı Erişim'den hem Profil'den
   // açılabiliyor; geri butonu doğru yere dönsün diye kaynağını tutuyoruz.
   const [achievementsOrigin, setAchievementsOrigin] = useState('home')
+
   // Seçili tema id'si — <html>'e THEMES içindeki className uygulanır.
   const [themeId, setThemeId] = useState(
-    () => (typeof window !== 'undefined' && localStorage.getItem('medloop-theme')) || 'green'
+    () =>
+      (typeof window !== 'undefined' &&
+        localStorage.getItem('medloop-theme')) ||
+      'green'
   )
-  // Kamera/galeriden seçilen profil fotoğrafı (data URL). Diğer uygulama
-  // verileri gibi kalıcı depolanmıyor — sayfa yenilenince sıfırlanabilir
-  // (bkz. Profil > Gizlilik açıklaması).
+
+  // Kamera/galeriden seçilen profil fotoğrafı.
   const [avatarImage, setAvatarImage] = useState(null)
-  // Vatandaş: QR oluşturmak için seçilen ilaçlar (henüz taranmadı/onaylanmadı).
+
+  // Vatandaş: QR oluşturmak için seçilen ilaçlar.
   const [pendingDeliverySelection, setPendingDeliverySelection] = useState([])
+
   // Eczacı: taranan ama henüz onaylanmamış teslimat QR verisi.
   const [pendingScannedDelivery, setPendingScannedDelivery] = useState(null)
-  // Onaylanmış teslimatların listesi — hem eczacının "Son Teslimatlar"
-  // listesinde hem vatandaşın "Toplam Teslim" sayacında kullanılır. Aynı
-  // tarayıcı oturumunda paylaşıldığı için rol değiştirince gerçek zamanlı
-  // görünür (bkz. handleConfirmDelivery).
+
+  // Onaylanmış teslimatların listesi.
   const [deliveries, setDeliveries] = useState([])
-  // Görüntülenecek teslimat kaydı (Ana Sayfa önizlemesi veya Geçmiş'ten açılabilir).
+
+  // Görüntülenecek teslimat kaydı.
   const [activeDeliveryId, setActiveDeliveryId] = useState(null)
-  const [deliveryDetailOrigin, setDeliveryDetailOrigin] = useState('pharmacist-home')
-  // Tema ekranı hem vatandaş hem eczacı Profil'inden açılabiliyor; geri
-  // butonu doğru yere dönsün diye kaynağını tutuyoruz.
+
+  const [deliveryDetailOrigin, setDeliveryDetailOrigin] = useState(
+    'pharmacist-home'
+  )
+
+  // Tema ekranının geri dönüş kaynağı.
   const [themeOrigin, setThemeOrigin] = useState('profile')
-  // Eczane profil bilgileri — gerçekten düzenlenip kaydedilebilir.
+
+  // Eczane profil bilgileri.
   const [pharmacyProfile, setPharmacyProfile] = useState({
     name: 'Merkez Eczanesi',
     address: 'Atatürk Cad. No:12',
     phone: '0232 123 45 67',
   })
-  // Bildirim Ayarları'ndaki gerçek tercihler — Bildirimler ekranını filtreler.
+
+  // Bildirim ayarları.
   const [notificationPrefs, setNotificationPrefs] = useState(() => {
-    if (typeof window === 'undefined') return { soonEnabled: true, expiredEnabled: true }
+    if (typeof window === 'undefined') {
+      return {
+        soonEnabled: true,
+        expiredEnabled: true,
+      }
+    }
+
     try {
-      const saved = JSON.parse(localStorage.getItem('medloop-notification-prefs'))
-      return saved ?? { soonEnabled: true, expiredEnabled: true }
+      const saved = JSON.parse(
+        localStorage.getItem('medloop-notification-prefs')
+      )
+
+      return (
+        saved ?? {
+          soonEnabled: true,
+          expiredEnabled: true,
+        }
+      )
     } catch {
-      return { soonEnabled: true, expiredEnabled: true }
+      return {
+        soonEnabled: true,
+        expiredEnabled: true,
+      }
     }
   })
 
   useEffect(() => {
-    localStorage.setItem('medloop-notification-prefs', JSON.stringify(notificationPrefs))
+    localStorage.setItem(
+      'medloop-notification-prefs',
+      JSON.stringify(notificationPrefs)
+    )
   }, [notificationPrefs])
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDarkMode)
-    localStorage.setItem('medloop-dark-mode', String(isDarkMode))
+
+    localStorage.setItem(
+      'medloop-dark-mode',
+      String(isDarkMode)
+    )
   }, [isDarkMode])
 
-  // Seçili temanın class'ını <html>'e uygular; diğer tema class'larını temizler.
+  // Seçili temanın class'ını <html>'e uygular.
   useEffect(() => {
-    THEMES.forEach((t) => t.className && document.documentElement.classList.remove(t.className))
+    THEMES.forEach((t) => {
+      if (t.className) {
+        document.documentElement.classList.remove(t.className)
+      }
+    })
+
     const theme = THEMES.find((t) => t.id === themeId)
-    if (theme?.className) document.documentElement.classList.add(theme.className)
+
+    if (theme?.className) {
+      document.documentElement.classList.add(theme.className)
+    }
+
     localStorage.setItem('medloop-theme', themeId)
   }, [themeId])
 
-  // Rozet kriterlerini gerçek durumla karşılaştırır; bir rozet bir kez
-  // kazanıldığında sette kalıcı kalır (kriter artık sağlanmasa bile).
+  // Rozet kriterlerini gerçek durumla karşılaştırır.
   useEffect(() => {
     const ctx = {
-      medicines: medicines.map((m) => ({ ...m, expiryStatusKey: getExpiryStatus(m.expiryDate).key })),
+      medicines: medicines.map((m) => ({
+        ...m,
+        expiryStatusKey: getExpiryStatus(m.expiryDate).key,
+      })),
       points,
       isDarkMode,
       readNotificationCount: readNotificationIds.size,
     }
-    const newlyUnlocked = ACHIEVEMENTS.filter((a) => a.check(ctx)).map((a) => a.id)
-    if (newlyUnlocked.some((id) => !unlockedAchievements.has(id))) {
+
+    const newlyUnlocked = ACHIEVEMENTS
+      .filter((a) => a.check(ctx))
+      .map((a) => a.id)
+
+    if (
+      newlyUnlocked.some(
+        (id) => !unlockedAchievements.has(id)
+      )
+    ) {
       setUnlockedAchievements((prev) => {
         const next = new Set(prev)
-        newlyUnlocked.forEach((id) => next.add(id))
+
+        newlyUnlocked.forEach((id) => {
+          next.add(id)
+        })
+
         return next
       })
     }
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [medicines, points, isDarkMode, readNotificationIds])
+  }, [
+    medicines,
+    points,
+    isDarkMode,
+    readNotificationIds,
+  ])
 
   const unreadCount = medicines.filter((m) => {
     const status = getExpiryStatus(m.expiryDate).key
-    return (status === 'expired' || status === 'soon') && !readNotificationIds.has(m.id)
+
+    return (
+      (status === 'expired' || status === 'soon') &&
+      !readNotificationIds.has(m.id)
+    )
   }).length
 
-  // Alt gezinme çubuğundaki sekmeler arası geçiş.
+  // ============================================================
+  // NAVIGATION
+  // ============================================================
+
   const navigateTo = (key) => {
-    if (key === 'home') setScreen('home')
-    else if (key === 'medicines') setScreen('medicines')
-    else if (key === 'scan') setScreen('scan')
-    else if (key === 'notifications') setScreen('notifications')
-    else if (key === 'profile') setScreen('profile')
+    if (key === 'home') {
+      setScreen('home')
+    } else if (key === 'medicines') {
+      setScreen('medicines')
+    } else if (key === 'scan') {
+      setScreen('scan')
+    } else if (key === 'notifications') {
+      setScreen('notifications')
+    } else if (key === 'profile') {
+      setScreen('profile')
+    }
   }
 
-  // Eczacı tarafının kendi alt gezinme çubuğu (Ana Sayfa / Geçmiş / Profil).
   const pharmacistNavigateTo = (key) => {
-    if (key === 'home') setScreen('pharmacist-home')
-    else if (key === 'history') setScreen('pharmacist-history')
-    else if (key === 'profile') setScreen('pharmacist-profile')
+    if (key === 'home') {
+      setScreen('pharmacist-home')
+    } else if (key === 'history') {
+      setScreen('pharmacist-history')
+    } else if (key === 'profile') {
+      setScreen('pharmacist-profile')
+    }
   }
 
-  // Ana sayfadaki Hızlı Erişim kartları — bottom nav'daki sekmelerle
-  // (medicines, notifications) aynı navigateTo'yu, henüz geliştirilmeyen
-  // hedefler için ise placeholder ekranları kullanır.
+  // ============================================================
+  // YASAL BELGELER
+  // ============================================================
+
+  /**
+   * public/legal/privacy-policy.html
+   *
+   * Yeni sekmede açılır.
+   */
+  const openPrivacyPolicy = () => {
+    window.open(
+      '/legal/privacy-policy.html',
+      '_blank',
+      'noopener,noreferrer'
+    )
+  }
+
+  /**
+   * public/legal/terms-of-use.html
+   *
+   * Yeni sekmede açılır.
+   */
+  const openTerms = () => {
+    window.open(
+      '/legal/terms-of-use.html',
+      '_blank',
+      'noopener,noreferrer'
+    )
+  }
+
+  // ============================================================
+  // QUICK ACCESS
+  // ============================================================
+
   const handleQuickAccess = (key) => {
-    if (key === 'medicines' || key === 'notifications') navigateTo(key)
-    else if (key === 'deliver') setScreen('deliver')
-    else if (key === 'achievements') {
+    if (
+      key === 'medicines' ||
+      key === 'notifications'
+    ) {
+      navigateTo(key)
+    } else if (key === 'deliver') {
+      setScreen('deliver')
+    } else if (key === 'achievements') {
       setAchievementsOrigin('home')
       setScreen('achievements')
     }
   }
 
+  // ============================================================
+  // NOTIFICATIONS
+  // ============================================================
+
   const handleMarkNotificationRead = (id) => {
-    setReadNotificationIds((prev) => new Set(prev).add(id))
+    setReadNotificationIds(
+      (prev) => new Set(prev).add(id)
+    )
   }
+
+  // ============================================================
+  // MEDICINES
+  // ============================================================
 
   const handleOpenMedicine = (medicine) => {
     setActiveMedicineId(medicine.id)
@@ -189,11 +315,18 @@ export default function App() {
   }
 
   const handleUpdateMedicine = (updated) => {
-    setMedicines((prev) => prev.map((m) => (m.id === updated.id ? updated : m)))
+    setMedicines((prev) =>
+      prev.map((m) =>
+        m.id === updated.id ? updated : m
+      )
+    )
   }
 
   const handleDeleteMedicine = (id) => {
-    setMedicines((prev) => prev.filter((m) => m.id !== id))
+    setMedicines((prev) =>
+      prev.filter((m) => m.id !== id)
+    )
+
     setActiveMedicineId(null)
     setScreen('medicines')
   }
@@ -203,16 +336,26 @@ export default function App() {
     setScreen('add-medicine')
   }
 
-  // "Manuel Ekle": tarama yapılmadan boş bir taslakla forma gider — kamera
-  // izni olmayan/istemeyen kullanıcılar için de ilaç ekleme yolu açık kalır.
+  // Manuel ilaç ekleme.
   const handleManualAdd = () => {
-    setPendingScan({ image: null, draft: null })
+    setPendingScan({
+      image: null,
+      draft: null,
+    })
+
     setScreen('add-medicine')
   }
 
   const handleSaveMedicine = (medicine) => {
-    setMedicines((prev) => [medicine, ...prev])
-    setPoints((prev) => prev + POINTS_PER_MEDICINE)
+    setMedicines((prev) => [
+      medicine,
+      ...prev,
+    ])
+
+    setPoints(
+      (prev) => prev + POINTS_PER_MEDICINE
+    )
+
     setPendingScan(null)
     setScreen('home')
   }
@@ -222,20 +365,43 @@ export default function App() {
     setScreen('scan')
   }
 
+  // ============================================================
+  // PROFILE SETTINGS
+  // ============================================================
+
   const handleOpenSetting = (key) => {
     if (key === 'tema') {
       setThemeOrigin('profile')
       return setScreen('theme')
     }
-    if (key === 'bildirimler') return setScreen('notification-settings')
-    if (key === 'gizlilik') return setScreen('privacy')
-    if (key === 'yardim') return setScreen('help')
-    if (key === 'hakkinda') return setScreen('about')
+
+    if (key === 'bildirimler') {
+      return setScreen('notification-settings')
+    }
+
+    if (key === 'gizlilik') {
+      return setScreen('privacy')
+    }
+
+    if (key === 'yardim') {
+      return setScreen('help')
+    }
+
+    if (key === 'hakkinda') {
+      return setScreen('about')
+    }
   }
 
   const handleTogglePref = (key) => {
-    setNotificationPrefs((prev) => ({ ...prev, [key]: !prev[key] }))
+    setNotificationPrefs((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }))
   }
+
+  // ============================================================
+  // DELIVERY
+  // ============================================================
 
   const handleGenerateQr = (selectedMedicines) => {
     setPendingDeliverySelection(selectedMedicines)
@@ -247,26 +413,49 @@ export default function App() {
     setScreen('delivery-confirm')
   }
 
-  // Eczacı onayladığında: taranan QR'daki ilaçlar vatandaşın (aynı oturumdaki)
-  // dolabından gerçekten düşer, MedLoop puanı ve teslimat sayacı artar.
+  // Eczacı teslimatı onayladığında ilaçlar vatandaşın dolabından düşer.
   const handleConfirmDelivery = () => {
-    if (!pendingScannedDelivery) return
-    const deliveredIds = new Set(pendingScannedDelivery.items.map((i) => i.id))
-    setMedicines((prev) => prev.filter((m) => !deliveredIds.has(m.id)))
-    setPoints((prev) => prev + pendingScannedDelivery.items.length * DELIVERY_POINTS_PER_MEDICINE)
+    if (!pendingScannedDelivery) {
+      return
+    }
+
+    const deliveredIds = new Set(
+      pendingScannedDelivery.items.map(
+        (i) => i.id
+      )
+    )
+
+    setMedicines((prev) =>
+      prev.filter(
+        (m) => !deliveredIds.has(m.id)
+      )
+    )
+
+    setPoints(
+      (prev) =>
+        prev +
+        pendingScannedDelivery.items.length *
+          DELIVERY_POINTS_PER_MEDICINE
+    )
+
     setDeliveries((prev) => [
       ...prev,
       {
         id: crypto.randomUUID(),
-        citizenName: pendingScannedDelivery.citizenName,
-        items: pendingScannedDelivery.items,
-        confirmedAt: new Date().toISOString(),
+        citizenName:
+          pendingScannedDelivery.citizenName,
+        items:
+          pendingScannedDelivery.items,
+        confirmedAt:
+          new Date().toISOString(),
       },
     ])
   }
 
-  // Gerçekten siler: dolaptaki ilaçlar, puan, okunma geçmişi ve rozetler
-  // sıfırlanır. Bildirim tercihleri ve tema gibi ayarlar korunur.
+  // ============================================================
+  // DATA CLEAR
+  // ============================================================
+
   const handleClearAllData = () => {
     setMedicines([])
     setPoints(0)
@@ -274,28 +463,58 @@ export default function App() {
     setUnlockedAchievements(new Set())
   }
 
-  // Gerçek çıkış: oturumu (rol) sıfırlar ve rol seçim ekranına döner.
-  // İlaçlar/puanlar bir sonraki girişte hâlâ orada olacak şekilde
-  // (gerçek bir backend'de session'dan bağımsız veri gibi) korunur.
+  // ============================================================
+  // LOGOUT
+  // ============================================================
+
   const handleLogout = () => {
     setRole(null)
     setScreen('role')
   }
 
+  // ============================================================
+  // SPLASH
+  // ============================================================
+
   if (screen === 'splash') {
-    return <SplashScreen onFinish={() => setScreen('onboarding')} />
+    return (
+      <SplashScreen
+        onFinish={() =>
+          setScreen('onboarding')
+        }
+      />
+    )
   }
 
+  // ============================================================
+  // ONBOARDING
+  // ============================================================
+
   if (screen === 'onboarding') {
-    return <OnboardingScreen onComplete={() => setScreen('role')} />
+    return (
+      <OnboardingScreen
+        onComplete={() =>
+          setScreen('role')
+        }
+      />
+    )
   }
+
+  // ============================================================
+  // ROLE
+  // ============================================================
 
   if (screen === 'role') {
     return (
       <RoleSelectionScreen
         onSelectRole={(selected) => {
           setRole(selected)
-          setScreen(selected === 'pharmacist' ? 'pharmacist-home' : 'home')
+
+          setScreen(
+            selected === 'pharmacist'
+              ? 'pharmacist-home'
+              : 'home'
+          )
         }}
         onHaveAccount={() => {
           setRole('citizen')
@@ -304,6 +523,10 @@ export default function App() {
       />
     )
   }
+
+  // ============================================================
+  // SCAN
+  // ============================================================
 
   if (screen === 'scan') {
     return (
@@ -316,7 +539,14 @@ export default function App() {
     )
   }
 
-  if (screen === 'add-medicine' && pendingScan) {
+  // ============================================================
+  // ADD MEDICINE
+  // ============================================================
+
+  if (
+    screen === 'add-medicine' &&
+    pendingScan
+  ) {
     return (
       <AddMedicineScreen
         scanResult={pendingScan}
@@ -325,6 +555,10 @@ export default function App() {
       />
     )
   }
+
+  // ============================================================
+  // MEDICINES
+  // ============================================================
 
   if (screen === 'medicines') {
     return (
@@ -336,161 +570,362 @@ export default function App() {
     )
   }
 
+  // ============================================================
+  // MEDICINE DETAIL
+  // ============================================================
+
   if (screen === 'medicine-detail') {
-    const activeMedicine = medicines.find((m) => m.id === activeMedicineId)
+    const activeMedicine =
+      medicines.find(
+        (m) => m.id === activeMedicineId
+      )
+
     if (activeMedicine) {
       return (
         <MedicineDetailScreen
           medicine={activeMedicine}
           onSave={handleUpdateMedicine}
           onDelete={handleDeleteMedicine}
-          onBack={() => setScreen('medicines')}
+          onBack={() =>
+            setScreen('medicines')
+          }
         />
       )
     }
   }
+
+  // ============================================================
+  // NOTIFICATIONS
+  // ============================================================
 
   if (screen === 'notifications') {
     return (
       <NotificationsScreen
         medicines={medicines}
         readIds={readNotificationIds}
-        onMarkRead={handleMarkNotificationRead}
+        onMarkRead={
+          handleMarkNotificationRead
+        }
         onNavigate={navigateTo}
         prefs={notificationPrefs}
       />
     )
   }
 
+  // ============================================================
+  // DELIVER
+  // ============================================================
+
   if (screen === 'deliver') {
     return (
       <DeliverScreen
         medicines={medicines}
         onGenerateQr={handleGenerateQr}
-        onBack={() => setScreen('home')}
+        onBack={() =>
+          setScreen('home')
+        }
       />
     )
   }
 
+  // ============================================================
+  // DELIVERY QR
+  // ============================================================
+
   if (screen === 'delivery-qr') {
     return (
       <DeliveryQRScreen
-        medicines={pendingDeliverySelection}
+        medicines={
+          pendingDeliverySelection
+        }
         citizenName={CITIZEN_NAME}
-        onBack={() => setScreen('deliver')}
+        onBack={() =>
+          setScreen('deliver')
+        }
       />
     )
   }
+
+  // ============================================================
+  // PHARMACIST HOME
+  // ============================================================
 
   if (screen === 'pharmacist-home') {
     return (
       <PharmacistHomeScreen
         deliveries={deliveries}
-        pharmacyName={pharmacyProfile.name}
-        onScanQr={() => setScreen('qr-scan')}
+        pharmacyName={
+          pharmacyProfile.name
+        }
+        onScanQr={() =>
+          setScreen('qr-scan')
+        }
         onOpenDelivery={(id) => {
           setActiveDeliveryId(id)
-          setDeliveryDetailOrigin('pharmacist-home')
-          setScreen('pharmacist-delivery-detail')
+
+          setDeliveryDetailOrigin(
+            'pharmacist-home'
+          )
+
+          setScreen(
+            'pharmacist-delivery-detail'
+          )
         }}
-        onNavigate={pharmacistNavigateTo}
+        onNavigate={
+          pharmacistNavigateTo
+        }
       />
     )
   }
 
-  if (screen === 'pharmacist-history') {
+  // ============================================================
+  // PHARMACIST HISTORY
+  // ============================================================
+
+  if (
+    screen === 'pharmacist-history'
+  ) {
     return (
       <PharmacistHistoryScreen
         deliveries={deliveries}
         onOpenDelivery={(id) => {
           setActiveDeliveryId(id)
-          setDeliveryDetailOrigin('pharmacist-history')
-          setScreen('pharmacist-delivery-detail')
+
+          setDeliveryDetailOrigin(
+            'pharmacist-history'
+          )
+
+          setScreen(
+            'pharmacist-delivery-detail'
+          )
         }}
-        onNavigate={pharmacistNavigateTo}
+        onNavigate={
+          pharmacistNavigateTo
+        }
       />
     )
   }
 
-  if (screen === 'pharmacist-delivery-detail') {
-    const delivery = deliveries.find((d) => d.id === activeDeliveryId)
+  // ============================================================
+  // PHARMACIST DELIVERY DETAIL
+  // ============================================================
+
+  if (
+    screen ===
+    'pharmacist-delivery-detail'
+  ) {
+    const delivery =
+      deliveries.find(
+        (d) =>
+          d.id === activeDeliveryId
+      )
+
     if (delivery) {
-      return <PharmacistDeliveryDetailScreen delivery={delivery} onBack={() => setScreen(deliveryDetailOrigin)} />
+      return (
+        <PharmacistDeliveryDetailScreen
+          delivery={delivery}
+          onBack={() =>
+            setScreen(
+              deliveryDetailOrigin
+            )
+          }
+        />
+      )
     }
   }
 
-  if (screen === 'pharmacist-profile') {
-    const currentTheme = THEMES.find((t) => t.id === themeId) ?? THEMES[0]
-    const totalMedicinesReceived = deliveries.reduce((sum, d) => sum + d.items.length, 0)
+  // ============================================================
+  // PHARMACIST PROFILE
+  // ============================================================
+
+  if (
+    screen === 'pharmacist-profile'
+  ) {
+    const currentTheme =
+      THEMES.find(
+        (t) => t.id === themeId
+      ) ?? THEMES[0]
+
+    const totalMedicinesReceived =
+      deliveries.reduce(
+        (sum, d) =>
+          sum + d.items.length,
+        0
+      )
+
     return (
       <PharmacistProfileScreen
-        pharmacyProfile={pharmacyProfile}
-        onUpdateProfile={setPharmacyProfile}
-        themeName={currentTheme.name}
-        totalDeliveries={deliveries.length}
-        totalMedicines={totalMedicinesReceived}
+        pharmacyProfile={
+          pharmacyProfile
+        }
+        onUpdateProfile={
+          setPharmacyProfile
+        }
+        themeName={
+          currentTheme.name
+        }
+        totalDeliveries={
+          deliveries.length
+        }
+        totalMedicines={
+          totalMedicinesReceived
+        }
         isDarkMode={isDarkMode}
-        onToggleDarkMode={() => setIsDarkMode((prev) => !prev)}
+        onToggleDarkMode={() =>
+          setIsDarkMode(
+            (prev) => !prev
+          )
+        }
         onOpenTheme={() => {
-          setThemeOrigin('pharmacist-profile')
+          setThemeOrigin(
+            'pharmacist-profile'
+          )
+
           setScreen('theme')
         }}
         onLogout={handleLogout}
-        onNavigate={pharmacistNavigateTo}
+        onNavigate={
+          pharmacistNavigateTo
+        }
       />
     )
   }
+
+  // ============================================================
+  // QR SCAN
+  // ============================================================
 
   if (screen === 'qr-scan') {
-    return <QrScanScreen onScanned={handleQrScanned} onBack={() => setScreen('pharmacist-home')} />
+    return (
+      <QrScanScreen
+        onScanned={handleQrScanned}
+        onBack={() =>
+          setScreen(
+            'pharmacist-home'
+          )
+        }
+      />
+    )
   }
 
-  if (screen === 'delivery-confirm' && pendingScannedDelivery) {
+  // ============================================================
+  // DELIVERY CONFIRM
+  // ============================================================
+
+  if (
+    screen === 'delivery-confirm' &&
+    pendingScannedDelivery
+  ) {
     return (
       <DeliveryConfirmScreen
-        payload={pendingScannedDelivery}
-        onConfirm={handleConfirmDelivery}
+        payload={
+          pendingScannedDelivery
+        }
+        onConfirm={
+          handleConfirmDelivery
+        }
         onCancel={() => {
-          setPendingScannedDelivery(null)
-          setScreen('pharmacist-home')
+          setPendingScannedDelivery(
+            null
+          )
+
+          setScreen(
+            'pharmacist-home'
+          )
         }}
         onDone={() => {
-          setPendingScannedDelivery(null)
-          setScreen('pharmacist-home')
+          setPendingScannedDelivery(
+            null
+          )
+
+          setScreen(
+            'pharmacist-home'
+          )
         }}
       />
     )
   }
+
+  // ============================================================
+  // ACHIEVEMENTS
+  // ============================================================
 
   if (screen === 'achievements') {
     return (
       <AchievementsScreen
-        unlockedIds={unlockedAchievements}
-        onBack={() => setScreen(achievementsOrigin)}
+        unlockedIds={
+          unlockedAchievements
+        }
+        onBack={() =>
+          setScreen(
+            achievementsOrigin
+          )
+        }
       />
     )
   }
 
+  // ============================================================
+  // PROFILE
+  // ============================================================
+
   if (screen === 'profile') {
-    const currentTheme = THEMES.find((t) => t.id === themeId) ?? THEMES[0]
-    const totalDelivered = deliveries.reduce((sum, d) => sum + d.items.length, 0)
+    const currentTheme =
+      THEMES.find(
+        (t) => t.id === themeId
+      ) ?? THEMES[0]
+
+    const totalDelivered =
+      deliveries.reduce(
+        (sum, d) =>
+          sum + d.items.length,
+        0
+      )
+
     return (
       <ProfileScreen
         points={points}
-        medicinesCount={medicines.length}
-        totalDelivered={totalDelivered}
-        achievementsCount={unlockedAchievements.size}
-        themeName={currentTheme.name}
+        medicinesCount={
+          medicines.length
+        }
+        totalDelivered={
+          totalDelivered
+        }
+        achievementsCount={
+          unlockedAchievements.size
+        }
+        themeName={
+          currentTheme.name
+        }
         avatarImage={avatarImage}
-        onAvatarChange={setAvatarImage}
-        onAvatarRemove={() => setAvatarImage(null)}
-        onOpenCamera={() => setScreen('avatar-camera')}
+        onAvatarChange={
+          setAvatarImage
+        }
+        onAvatarRemove={() =>
+          setAvatarImage(null)
+        }
+        onOpenCamera={() =>
+          setScreen(
+            'avatar-camera'
+          )
+        }
         isDarkMode={isDarkMode}
-        onToggleDarkMode={() => setIsDarkMode((prev) => !prev)}
-        onOpenSetting={handleOpenSetting}
+        onToggleDarkMode={() =>
+          setIsDarkMode(
+            (prev) => !prev
+          )
+        }
+        onOpenSetting={
+          handleOpenSetting
+        }
         onOpenAchievements={() => {
-          setAchievementsOrigin('profile')
-          setScreen('achievements')
+          setAchievementsOrigin(
+            'profile'
+          )
+
+          setScreen(
+            'achievements'
+          )
         }}
         onLogout={handleLogout}
         onNavigate={navigateTo}
@@ -498,15 +933,25 @@ export default function App() {
     )
   }
 
+  // ============================================================
+  // THEME
+  // ============================================================
+
   if (screen === 'theme') {
     return (
       <ThemeScreen
         activeThemeId={themeId}
         onSelectTheme={setThemeId}
-        onBack={() => setScreen(themeOrigin)}
+        onBack={() =>
+          setScreen(themeOrigin)
+        }
       />
     )
   }
+
+  // ============================================================
+  // AVATAR CAMERA
+  // ============================================================
 
   if (screen === 'avatar-camera') {
     return (
@@ -515,62 +960,139 @@ export default function App() {
           setAvatarImage(image)
           setScreen('profile')
         }}
-        onCancel={() => setScreen('profile')}
+        onCancel={() =>
+          setScreen('profile')
+        }
       />
     )
   }
 
-  if (screen === 'notification-settings') {
+  // ============================================================
+  // NOTIFICATION SETTINGS
+  // ============================================================
+
+  if (
+    screen ===
+    'notification-settings'
+  ) {
     return (
       <NotificationSettingsScreen
         prefs={notificationPrefs}
-        onTogglePref={handleTogglePref}
-        onBack={() => setScreen('profile')}
+        onTogglePref={
+          handleTogglePref
+        }
+        onBack={() =>
+          setScreen('profile')
+        }
       />
     )
   }
 
+  // ============================================================
+  // PRIVACY
+  // ============================================================
+
   if (screen === 'privacy') {
-  return (
-    <PrivacyScreen
-      onClearData={handleClearAllData}
-      onBack={() => setScreen('profile')}
-    />
-  )
-}
+    return (
+      <PrivacyScreen
+        onClearData={
+          handleClearAllData
+        }
+        onBack={() =>
+          setScreen('profile')
+        }
+        onOpenPrivacyPolicy={
+          openPrivacyPolicy
+        }
+        onOpenTerms={
+          openTerms
+        }
+      />
+    )
+  }
+
+  // ============================================================
+  // ABOUT
+  // ============================================================
 
   if (screen === 'about') {
-    return <AboutScreen onBack={() => setScreen('profile')} />
+    return (
+      <AboutScreen
+        onBack={() =>
+          setScreen('profile')
+        }
+        onPrivacy={
+          openPrivacyPolicy
+        }
+        onTerms={
+          openTerms
+        }
+      />
+    )
   }
 
+  // ============================================================
+  // HELP
+  // ============================================================
+
   if (screen === 'help') {
-    return <HelpSupportScreen onBack={() => setScreen('profile')} />
+    return (
+      <HelpSupportScreen
+        onBack={() =>
+          setScreen('profile')
+        }
+      />
+    )
   }
+
+  // ============================================================
+  // PHARMACIST FALLBACK
+  // ============================================================
 
   if (role === 'pharmacist') {
     return (
       <PharmacistHomeScreen
         deliveries={deliveries}
-        pharmacyName={pharmacyProfile.name}
-        onScanQr={() => setScreen('qr-scan')}
+        pharmacyName={
+          pharmacyProfile.name
+        }
+        onScanQr={() =>
+          setScreen('qr-scan')
+        }
         onOpenDelivery={(id) => {
           setActiveDeliveryId(id)
-          setDeliveryDetailOrigin('pharmacist-home')
-          setScreen('pharmacist-delivery-detail')
+
+          setDeliveryDetailOrigin(
+            'pharmacist-home'
+          )
+
+          setScreen(
+            'pharmacist-delivery-detail'
+          )
         }}
-        onNavigate={pharmacistNavigateTo}
+        onNavigate={
+          pharmacistNavigateTo
+        }
       />
     )
   }
+
+  // ============================================================
+  // HOME
+  // ============================================================
 
   return (
     <HomeScreen
       medicines={medicines}
       points={points}
       unreadCount={unreadCount}
-      onScan={() => setScreen('scan')}
+      onScan={() =>
+        setScreen('scan')
+      }
       onNavigate={navigateTo}
-      onQuickAccess={handleQuickAccess}
+      onQuickAccess={
+        handleQuickAccess
+      }
     />
   )
 }
