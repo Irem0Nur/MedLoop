@@ -83,6 +83,14 @@ export default function App() {
   const [authError, setAuthError] = useState(null)
   // RoleSelectionScreen'de seçilen rol; RegisterScreen'e taşınır.
   const [pendingRole, setPendingRole] = useState('citizen')
+  // RoleSelectionScreen'de seçilen rol; RegisterScreen'e taşınır.
+  const [pendingRole, setPendingRole] = useState('citizen')
+  // Tanıtım ekranları (Onboarding) sadece kullanıcının cihazında hiç
+  // görülmediyse gösterilir — bir kez tamamlandıktan sonra localStorage'a
+  // işaretlenir, sonraki açılışlarda splash'tan direkt role/login'e geçilir.
+  const [hasOnboarded] = useState(
+    () => typeof window !== 'undefined' && localStorage.getItem('medloop-onboarded') === 'true'
+  )
 
   // --- İlaçlar / bildirimler (backend'den) ---
   const [medicines, setMedicines] = useState([])
@@ -481,15 +489,16 @@ export default function App() {
   }
 
   if (screen === 'splash') {
-    return <SplashScreen onFinish={() => setScreen('onboarding')} />
+    return <SplashScreen onFinish={() => setScreen(hasOnboarded ? 'role' : 'onboarding')} />
   }
 
   if (screen === 'onboarding') {
     return (
       <OnboardingScreen
-        onComplete={() =>
+        onComplete={() => {
+          localStorage.setItem('medloop-onboarded', 'true')
           setScreen(authUser ? (authUser.role === 'pharmacist' ? 'pharmacist-home' : 'home') : 'role')
-        }
+        }}
       />
     )
   }
