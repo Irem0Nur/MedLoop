@@ -29,12 +29,46 @@ export default function ProfileScreen({
   onToggleDarkMode,
   onOpenSetting,
   onOpenAchievements,
+  onUpdateName,
   onLogout,
   onNavigate,
 }) {
   const [avatarSheetOpen, setAvatarSheetOpen] = useState(false)
   const cameraInputRef = useRef(null)
   const galleryInputRef = useRef(null)
+
+  const [editingName, setEditingName] = useState(false)
+  const [nameDraft, setNameDraft] = useState(name || '')
+  const [savingName, setSavingName] = useState(false)
+  const [nameError, setNameError] = useState(null)
+
+  const startEditName = () => {
+    setNameDraft(name || '')
+    setNameError(null)
+    setEditingName(true)
+  }
+
+  // Backend'e PATCH /users/me atar (bkz. App.jsx handleUpdateName). Hata
+  // fırlarsa burada yakalayıp gösteriyoruz (diğer ekranlardaki gibi try/catch
+  // çağıran tarafta değil, burada — çünkü düzenleme modundan çıkmadan önce
+  // hatayı kullanıcıya göstermemiz gerekiyor).
+  const saveName = async () => {
+    const trimmed = nameDraft.trim()
+    if (!trimmed) {
+      setNameError('İsim boş olamaz')
+      return
+    }
+    setSavingName(true)
+    setNameError(null)
+    try {
+      await onUpdateName?.(trimmed)
+      setEditingName(false)
+    } catch (err) {
+      setNameError(err?.message || 'İsim güncellenemedi, tekrar dene.')
+    } finally {
+      setSavingName(false)
+    }
+  }
 
   const settingsRows = [
     { key: 'tema', label: 'Tema', icon: <PaletteIcon />, value: themeName },
@@ -86,7 +120,49 @@ export default function ProfileScreen({
               <CameraIcon />
             </button>
           </div>
-          <h2 className="font-display font-bold text-forest-900 text-lg mt-3">{name || 'Kullanıcı'}</h2>
+          {editingName ? (
+            <div className="w-full flex flex-col gap-2 mt-3">
+              <input
+                type="text"
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                autoFocus
+                placeholder="Adın"
+                className="w-full h-11 rounded-xl px-3.5 bg-white/70 border border-mint-200 text-sm text-forest-900 text-center outline-none focus:border-forest-500 transition-colors"
+              />
+              {nameError && <p className="text-xs text-rose-500 font-medium">{nameError}</p>}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingName(false)}
+                  disabled={savingName}
+                  className="flex-1 h-10 rounded-xl bg-white/80 text-forest-700 text-sm font-medium disabled:opacity-60"
+                >
+                  Vazgeç
+                </button>
+                <button
+                  type="button"
+                  onClick={saveName}
+                  disabled={savingName}
+                  className="flex-1 h-10 rounded-xl bg-forest-600 text-white text-sm font-semibold disabled:opacity-70"
+                >
+                  {savingName ? 'Kaydediliyor…' : 'Kaydet'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={startEditName}
+              aria-label="İsmi düzenle"
+              className="flex items-center gap-1.5 mt-3"
+            >
+              <h2 className="font-display font-bold text-forest-900 text-lg">{name || 'Kullanıcı'}</h2>
+              <span className="text-forest-700/35 shrink-0">
+                <PencilIcon />
+              </span>
+            </button>
+          )}
           <p className="text-sm text-forest-700/60">{email}</p>
 
           <div className="grid grid-cols-3 gap-3 w-full mt-5">
@@ -259,6 +335,13 @@ function ChevronIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-forest-700/30 shrink-0">
       <path d="m9 18 6-6-6-6" />
+    </svg>
+  )
+}
+function PencilIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
     </svg>
   )
 }

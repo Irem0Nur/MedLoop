@@ -109,6 +109,8 @@ export const deliveriesApi = {
 
 export const usersApi = {
   me: () => request('/users/me'),
+  // Profil ekranındaki "İsmi düzenle" — şu an sadece { name } destekleniyor.
+  updateMe: (payload) => request('/users/me', { method: 'PATCH', body: payload }),
   // Gizlilik ekranındaki "Verilerimi dışa aktar" — hesapla ilişkili tüm
   // verilerin (profil, ilaçlar, bildirimler, teslimatlar) JSON kopyası.
   exportData: () => request('/users/me/export'),

@@ -488,6 +488,14 @@ export default function App() {
     await refreshNotifications()
   }
 
+  // Profil ekranındaki "İsmi düzenle": backend'e PATCH /users/me atar ve
+  // dönen güncel kullanıcıyı state'e yansıtır (ProfileScreen kendi hata
+  // mesajını gösterir, bu yüzden burada try/catch yok).
+  const handleUpdateName = async (newName) => {
+    const data = await usersApi.updateMe({ name: newName })
+    setAuthUser(data.user)
+  }
+
   // Gizlilik ekranındaki "Verilerimi dışa aktar": backend'den hesapla
   // ilişkili tüm verilerin (profil, ilaçlar, bildirimler, teslimatlar) JSON
   // kopyasını çeker ve tarayıcıda bir dosya olarak indirtir. Hata fırlarsa
@@ -824,6 +832,7 @@ export default function App() {
           setAchievementsOrigin('profile')
           setScreen('achievements')
         }}
+        onUpdateName={handleUpdateName}
         onLogout={handleLogout}
         onNavigate={navigateTo}
       />
