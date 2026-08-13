@@ -203,6 +203,13 @@ export default function App() {
     setScreen('add-medicine')
   }
 
+  // "Manuel Ekle": tarama yapılmadan boş bir taslakla forma gider — kamera
+  // izni olmayan/istemeyen kullanıcılar için de ilaç ekleme yolu açık kalır.
+  const handleManualAdd = () => {
+    setPendingScan({ image: null, draft: null })
+    setScreen('add-medicine')
+  }
+
   const handleSaveMedicine = (medicine) => {
     setMedicines((prev) => [medicine, ...prev])
     setPoints((prev) => prev + POINTS_PER_MEDICINE)
@@ -299,7 +306,14 @@ export default function App() {
   }
 
   if (screen === 'scan') {
-    return <ScanScreen onBack={() => setScreen('home')} onScanSuccess={handleScanSuccess} onNavigate={navigateTo} />
+    return (
+      <ScanScreen
+        onBack={() => setScreen('home')}
+        onScanSuccess={handleScanSuccess}
+        onManualAdd={handleManualAdd}
+        onNavigate={navigateTo}
+      />
+    )
   }
 
   if (screen === 'add-medicine' && pendingScan) {
