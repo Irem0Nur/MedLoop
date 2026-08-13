@@ -1,3 +1,4 @@
+import Logo from '../components/Logo.jsx'
 export default function AboutScreen({
   onBack,
   onPrivacy,
@@ -48,29 +49,8 @@ export default function AboutScreen({
 
         <div className="glass-card rounded-3xl p-6 flex flex-col items-center text-center">
 
-          <div className="w-16 h-16 rounded-[1.25rem] bg-white/70 flex items-center justify-center mb-3">
-
-            <svg
-              width="30"
-              height="30"
-              viewBox="0 0 24 24"
-              fill="none"
-            >
-              <path
-                d="M12 3c4 0 7 2.5 7 6.5S16.5 15 13 15c-2.2 0-4-1.3-4-3.2 0-1.5 1.1-2.6 2.6-2.6 1.2 0 2 .8 2 1.9"
-                stroke="#1e6b4c"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-              />
-
-              <path
-                d="M12 21c-4 0-7-2.5-7-6.5S7.5 9 11 9c2.2 0 4 1.3 4 3.2 0 1.5-1.1 2.6-2.6 2.6-1.2 0-2-.8-2-1.9"
-                stroke="#cf9b3f"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-              />
-            </svg>
-
+          <div className="mb-3">
+            <Logo size={64} />
           </div>
 
           <h2 className="font-display font-bold text-forest-900 text-lg">
