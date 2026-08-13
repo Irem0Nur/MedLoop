@@ -531,8 +531,13 @@ export default function App() {
   }
 
   if (screen === 'privacy') {
-    return <PrivacyScreen onClearData={handleClearAllData} onBack={() => setScreen('profile')} />
-  }
+  return (
+    <PrivacyScreen
+      onClearData={handleClearAllData}
+      onBack={() => setScreen('profile')}
+    />
+  )
+}
 
   if (screen === 'about') {
     return <AboutScreen onBack={() => setScreen('profile')} />
