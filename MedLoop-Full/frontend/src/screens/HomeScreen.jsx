@@ -22,7 +22,7 @@ export default function HomeScreen({ name, medicines, points, unreadCount, onSca
       <header className="relative z-10 px-5 pt-6 flex items-center justify-between">
         <div>
           <p className="text-sm text-forest-700/60">Merhaba,</p>
-          <h1 className="font-display font-bold text-forest-900 text-xl">{name}</h1>
+          <h1 className="font-display font-bold text-forest-900 text-xl">{name || 'Kullanıcı'}</h1>
         </div>
         <button
           type="button"
