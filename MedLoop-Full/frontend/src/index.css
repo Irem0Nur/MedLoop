@@ -37,6 +37,7 @@
   --shadow-glass: 0 8px 32px rgba(14, 46, 32, 0.12);
 
   --animate-scan-line: scan-line 1.8s ease-in-out infinite;
+  --animate-marquee: marquee 32s linear infinite;
 }
 
 @keyframes scan-line {
@@ -60,6 +61,7 @@
 
 html, body, #root {
   height: 100%;
+}
 
 body {
   font-family: var(--font-body);
