@@ -1,3 +1,4 @@
+import RecyclingTicker from '../components/RecyclingTicker.jsx'
 import BottomNav from '../components/BottomNav.jsx'
 import NearbyPharmacies from '../components/NearbyPharmacies.jsx'
 import { getExpiryStatus } from '../utils/expiry.js'
@@ -112,6 +113,8 @@ export default function HomeScreen({ name, medicines, points, unreadCount, impac
             ))}
           </div>
         </section>
+
+        <RecyclingTicker />
 
         <NearbyPharmacies />
       </div>

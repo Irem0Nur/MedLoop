@@ -46,9 +46,20 @@
   100% { top: 94%; opacity: 0; }
 }
 
+/* Ana Sayfa'daki akan geri dönüşüm cümleleri şeridi (RecyclingTicker) —
+   içerik iki kez art arda render edilip %50 kaydırılır, böylece döngü
+   dikişsiz akar. prefers-reduced-motion ile otomatik olarak durur (bkz.
+   aşağıdaki media query). */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee 18s linear infinite;
+}
+
 html, body, #root {
   height: 100%;
-}
 
 body {
   font-family: var(--font-body);
