@@ -24,23 +24,82 @@ catalog_bp = Blueprint("catalog", __name__, url_prefix="/catalog")
 @jwt_required()
 def search_catalog():
     query = (request.args.get("q") or "").strip()
+
     if len(query) < 2:
-        return jsonify({"error": "q en az 2 karakter olmalı"}), 400
+        return jsonify({"error": "q en az 2 karakter olmal?"}), 400
 
-    limit = min(int(request.args.get("limit", 15)), 50)
-    like_pattern = f"%{query}%"
+    try:
+        limit = min(max(int(request.args.get("limit", 15)), 1), 50)
+    except ValueError:
+        limit = 15
 
-    results = (
+    prefix_pattern = f"{query}%"
+    contains_pattern = f"%{query}%"
+
+    results = []
+    existing_ids = []
+
+    # 1. En y?ksek ?ncelik: ?r?n ad? sorguyla ba?layan ila?lar
+    product_prefix = (
         MedicationCatalog.query.filter(
-            or_(
-                MedicationCatalog.product_name.ilike(like_pattern),
-                MedicationCatalog.active_ingredient.ilike(like_pattern),
-            )
+            MedicationCatalog.product_name.ilike(prefix_pattern)
         )
         .order_by(MedicationCatalog.product_name.asc())
         .limit(limit)
         .all()
     )
+
+    results.extend(product_prefix)
+    existing_ids.extend(item.id for item in product_prefix)
+
+    # 2. Sonra etken maddesi sorguyla ba?layan ila?lar
+    if len(results) < limit:
+        remaining = limit - len(results)
+
+        active_query = MedicationCatalog.query.filter(
+            MedicationCatalog.active_ingredient.ilike(prefix_pattern)
+        )
+
+        if existing_ids:
+            active_query = active_query.filter(
+                ~MedicationCatalog.id.in_(existing_ids)
+            )
+
+        active_results = (
+            active_query
+            .order_by(MedicationCatalog.product_name.asc())
+            .limit(remaining)
+            .all()
+        )
+
+        results.extend(active_results)
+        existing_ids.extend(item.id for item in active_results)
+
+    # 3. H?l? yer varsa i?erik e?le?melerini getir
+    if len(results) < limit:
+        remaining = limit - len(results)
+
+        fallback_query = MedicationCatalog.query.filter(
+            or_(
+                MedicationCatalog.product_name.ilike(contains_pattern),
+                MedicationCatalog.active_ingredient.ilike(contains_pattern),
+            )
+        )
+
+        if existing_ids:
+            fallback_query = fallback_query.filter(
+                ~MedicationCatalog.id.in_(existing_ids)
+            )
+
+        fallback_results = (
+            fallback_query
+            .order_by(MedicationCatalog.product_name.asc())
+            .limit(remaining)
+            .all()
+        )
+
+        results.extend(fallback_results)
+
     return jsonify({"results": [r.to_dict() for r in results]})
 
 
