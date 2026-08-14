@@ -69,6 +69,18 @@ export default function ProfileScreen({
       setLocationError('Bu cihazda konum servisi desteklenmiyor.')
       return
     }
+    // Tarayıcılar (özellikle Chrome) Geolocation API'sini sadece "güvenli
+    // bağlamda" (https:// ya da http://localhost) çalıştırır. Uygulama
+    // http://<IP-adresi>:5173 gibi bir adresten açıldıysa (ör. telefondan
+    // aynı ağdaki bilgisayara erişim) izin isteği hiç gösterilmeden sessizce
+    // reddedilir — bu yüzden en yaygın nedeni burada ayrıca kontrol ediyoruz.
+    if (typeof window !== 'undefined' && window.isSecureContext === false) {
+      setLocationError(
+        'Konum servisi sadece güvenli bağlantılarda çalışır (https:// ya da http://localhost). ' +
+          'Uygulamayı bir IP adresinden (ör. http://192.168.x.x:5173) açtıysan bu yüzden izin isteği hiç çıkmaz.'
+      )
+      return
+    }
     setLocationError(null)
     setSharingLocation(true)
     navigator.geolocation.getCurrentPosition(
@@ -86,8 +98,16 @@ export default function ProfileScreen({
           setSharingLocation(false)
         }
       },
-      () => {
-        setLocationError('Konum izni reddedildi ya da alınamadı.')
+      (geoError) => {
+        // error.code: 1 = izin reddedildi, 2 = konum alınamadı (GPS/OS kapalı
+        // olabilir), 3 = zaman aşımı. Her biri farklı bir eylem gerektirir,
+        // bu yüzden ayrı ayrı gösteriyoruz.
+        const messages = {
+          1: 'Konum izni reddedildi. Tarayıcının adres çubuğundaki kilit/site ayarları simgesinden konum iznini "İzin Ver" yapıp tekrar dene.',
+          2: 'Konum alınamadı. Bilgisayarının/telefonunun konum servisinin (Windows: Ayarlar > Gizlilik > Konum) açık olduğundan emin ol.',
+          3: 'Konum alma zaman aşımına uğradı, tekrar dene.',
+        }
+        setLocationError(messages[geoError?.code] || 'Konum izni reddedildi ya da alınamadı.')
         setSharingLocation(false)
       },
       { enableHighAccuracy: false, timeout: 10000 }
