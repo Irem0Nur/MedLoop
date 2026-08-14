@@ -5,7 +5,7 @@ const MESSAGES = [
   'İlaç israfını azalt, geleceği koru.',
   'Evinde unutulan ilaç, geleceğin kaybı olmasın.',
   'İlacın ömrü biter, sorumluluğumuz bitmez.',
-  'Fazlasını biriktirme, doğru şekilde değerlendir.'
+  'Fazlasını biriktirme, doğru şekilde değerlendir.',
   'Bir ilaç daha çöpe gitmesin.',
   'İsrafı azalt, döngüyü devam ettir.',
   'Sağlığını korurken doğayı da koru.',
