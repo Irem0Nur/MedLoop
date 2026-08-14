@@ -110,7 +110,12 @@ export default function ProfileScreen({
         setLocationError(messages[geoError?.code] || 'Konum izni reddedildi ya da alınamadı.')
         setSharingLocation(false)
       },
-      { enableHighAccuracy: false, timeout: 10000 }
+      // timeout uzun tutuluyor (30sn) — özellikle bina içi/zayıf sinyalde ilk
+      // konum tespiti (özellikle enableHighAccuracy: false ile, ağ/WiFi
+      // tabanlı konumlama) birkaç saniyeden fazla sürebiliyor. maximumAge,
+      // tarayıcının son 1 dakika içindeki bir konumu varsa onu (GPS'i tekrar
+      // beklemeden) kullanmasına izin verir.
+      { enableHighAccuracy: false, timeout: 30000, maximumAge: 60000 }
     )
   }
 
