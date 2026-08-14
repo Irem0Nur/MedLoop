@@ -59,6 +59,12 @@
   animation: marquee 18s linear infinite;
 }
 
+/* RecyclingTicker — tek tek kayan kart girişi */
+@keyframes cardSlideIn {
+  from { opacity: 0; transform: translateX(28px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
 html, body, #root {
   height: 100%;
 }
