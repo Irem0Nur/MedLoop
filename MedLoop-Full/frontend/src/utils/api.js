@@ -127,4 +127,9 @@ export const usersApi = {
   // Ana Sayfa'daki "Çevresel Etkin" kartı — güvenle teslim edilen ilaçlardan
   // tahmini CO2/su tasarrufu (bkz. backend users/routes.py IMPACT_* sabitleri).
   impact: () => request('/users/me/impact'),
+  // Profil'deki "Liderlik Tablosu" — cihaz GPS'inden alınan enlem/boylamı
+  // backend'e gönderir, backend ters coğrafi kodlama ile ili bulup kaydeder.
+  updateLocation: (payload) => request('/users/me/location', { method: 'PATCH', body: payload }),
+  // Profil'deki "Liderlik Tablosu" — kullanıcının ilindeki ilk 3 + kendi sırası.
+  leaderboard: () => request('/users/me/leaderboard'),
 }

@@ -2,7 +2,7 @@
 MedLoop Backend - Veritabanı Modelleri
 ========================================
 SQLAlchemy modelleri: User, Medication, Notification, DeviceToken,
-PasswordResetToken.
+PasswordResetToken, UserLocation.
 
 Notification.type alanı şu değerlerden birini alır:
   - "medication_added"     : İlaç başarıyla eklendiğinde
@@ -49,6 +49,9 @@ class User(db.Model):
     )
     password_reset_tokens = db.relationship(
         "PasswordResetToken", backref="user", lazy=True, cascade="all, delete-orphan"
+    )
+    location = db.relationship(
+        "UserLocation", backref="user", lazy=True, uselist=False, cascade="all, delete-orphan"
     )
 
     def to_dict(self):
@@ -164,6 +167,25 @@ class PasswordResetToken(db.Model):
     expires_at = db.Column(db.DateTime(timezone=True), nullable=False)
     used_at = db.Column(db.DateTime(timezone=True), nullable=True)
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+
+
+class UserLocation(db.Model):
+    """Profil ekranındaki "Liderlik Tablosu" için kullanıcının son bilinen
+    konumu. Kullanıcı Profil'den "Konumumu Güncelle" dediğinde cihaz
+    GPS'inden alınan enlem/boylam buraya kaydedilir; il adı backend'de
+    ters coğrafi kodlama (bkz. services/geocoding.py) ile bulunur.
+    Ayrı bir tabloda tutulur (User'a doğrudan kolon eklemek yerine) —
+    böylece mevcut `users` tablosuna dokunmadan, yeni tablo otomatik
+    oluşur (bkz. app.py db.create_all())."""
+
+    __tablename__ = "user_locations"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), unique=True, nullable=False, index=True)
+    city = db.Column(db.String(100), nullable=True, index=True)
+    latitude = db.Column(db.Float, nullable=True)
+    longitude = db.Column(db.Float, nullable=True)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
 
 
 class Delivery(db.Model):

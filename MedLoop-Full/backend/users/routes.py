@@ -9,6 +9,10 @@ MedLoop Backend - Kullanıcı endpoint'leri
   GET    /users/me/impact           -> vatandaşın teslim ettiği ilaçlardan
                                         tahmini CO2/su tasarrufu (bkz. aşağıdaki
                                         IMPACT_* sabitleri)
+  PATCH  /users/me/location         -> cihaz GPS konumundan (lat/lon) ili tespit
+                                        edip kaydeder { latitude, longitude }
+  GET    /users/me/leaderboard      -> kullanıcının ilindeki puan liderlik tablosu
+                                        (ilk 3 + kullanıcının kendi sırası)
   POST   /users/me/device-tokens    -> push notification için FCM cihaz token'ı kaydet
                                         { token, platform? } (platform: "android"|"ios"|"web")
 """
@@ -20,7 +24,8 @@ from flask_jwt_extended import jwt_required
 
 from auth.utils import get_current_user
 from extensions import db
-from models import DeviceToken, Delivery, Medication, Notification
+from models import DeviceToken, Delivery, Medication, Notification, User, UserLocation
+from services.geocoding import reverse_geocode_city
 
 users_bp = Blueprint("users", __name__, url_prefix="/users")
 
@@ -146,6 +151,72 @@ def my_impact():
             "waterPerDeliveryLiters": IMPACT_WATER_LITERS_PER_DELIVERY,
         }
     )
+
+
+@users_bp.route("/me/location", methods=["PATCH"])
+@jwt_required()
+def update_my_location():
+    """Profil ekranındaki "Konumumu Güncelle" — cihaz GPS'inden alınan
+    enlem/boylamı ters coğrafi kodlamayla ile çevirip kaydeder (bkz.
+    services/geocoding.py, OpenStreetMap Nominatim kullanır, API key
+    gerektirmez)."""
+    user = get_current_user()
+    payload = request.get_json(silent=True) or {}
+
+    try:
+        latitude = float(payload.get("latitude"))
+        longitude = float(payload.get("longitude"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "Geçerli bir enlem/boylam gerekli"}), 400
+
+    city = reverse_geocode_city(latitude, longitude)
+    if not city:
+        return jsonify({"error": "Konumundan il tespit edilemedi, tekrar dene"}), 502
+
+    location = UserLocation.query.filter_by(user_id=user.id).first()
+    if not location:
+        location = UserLocation(user_id=user.id)
+    location.city = city
+    location.latitude = latitude
+    location.longitude = longitude
+    db.session.add(location)
+    db.session.commit()
+
+    return jsonify({"city": city})
+
+
+@users_bp.route("/me/leaderboard", methods=["GET"])
+@jwt_required()
+def my_leaderboard():
+    """Profil ekranındaki "Liderlik Tablosu" — kullanıcının ilindeki
+    vatandaşları MedLoop puanına göre sıralar (ilk 3 + kullanıcının kendi
+    sırası, ilk 3'te değilse de). Sadece "citizen" rolündeki kullanıcılar
+    sayılır (puan sadece teslimat yapan vatandaşlarda birikir — bkz.
+    services/points.py). Kullanıcı henüz konumunu paylaşmadıysa
+    city=None döner; frontend bu durumda "konumunu paylaş" istemi gösterir."""
+    user = get_current_user()
+
+    location = UserLocation.query.filter_by(user_id=user.id).first()
+    if not location or not location.city:
+        return jsonify({"city": None, "topThree": [], "me": None})
+
+    city_users = (
+        User.query.join(UserLocation, UserLocation.user_id == User.id)
+        .filter(User.role == "citizen", UserLocation.city == location.city)
+        .order_by(User.points.desc(), User.id.asc())
+        .all()
+    )
+
+    top_three = [{"id": u.id, "name": u.name, "points": u.points} for u in city_users[:3]]
+
+    me_rank = next((i + 1 for i, u in enumerate(city_users) if u.id == user.id), None)
+    me = (
+        {"id": user.id, "name": user.name, "points": user.points, "rank": me_rank}
+        if me_rank is not None
+        else None
+    )
+
+    return jsonify({"city": location.city, "topThree": top_three, "me": me})
 
 
 @users_bp.route("/me/device-tokens", methods=["POST"])

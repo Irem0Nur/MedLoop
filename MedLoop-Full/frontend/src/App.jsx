@@ -518,6 +518,13 @@ export default function App() {
     setAuthUser(data.user)
   }
 
+  // Profil ekranındaki "Liderlik Tablosu": cihaz GPS'inden alınan
+  // enlem/boylamı backend'e gönderir (backend ters coğrafi kodlamayla ili
+  // bulur), sonra güncel tabloyu döndürür. ProfileScreen kendi hata
+  // mesajını gösterir (bu yüzden burada try/catch yok).
+  const handleUpdateLocation = (coords) => usersApi.updateLocation(coords)
+  const handleFetchLeaderboard = () => usersApi.leaderboard()
+
   // Gizlilik ekranındaki "Verilerimi dışa aktar": backend'den hesapla
   // ilişkili tüm verilerin (profil, ilaçlar, bildirimler, teslimatlar) JSON
   // kopyasını çeker ve tarayıcıda bir dosya olarak indirtir. Hata fırlarsa
@@ -870,6 +877,8 @@ export default function App() {
           setScreen('achievements')
         }}
         onUpdateName={handleUpdateName}
+        onUpdateLocation={handleUpdateLocation}
+        onFetchLeaderboard={handleFetchLeaderboard}
         onLogout={handleLogout}
         onNavigate={navigateTo}
       />

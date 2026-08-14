@@ -1,5 +1,7 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import BottomNav from '../components/BottomNav.jsx'
+
+const RANK_BADGE_COLOR = ['bg-amber-400', 'bg-slate-400', 'bg-orange-400']
 
 /**
  * @param {number} points - gerçek MedLoop puanı
@@ -12,6 +14,8 @@ import BottomNav from '../components/BottomNav.jsx'
  * @param {() => void} onToggleDarkMode
  * @param {(key: string) => void} onOpenSetting - Tema/Bildirimler/Gizlilik/Yardım/Hakkında ekranları
  * @param {() => void} onOpenAchievements
+ * @param {({latitude, longitude}) => Promise<{city}>} onUpdateLocation - "Konumumu Paylaş"
+ * @param {() => Promise<{city, topThree, me}>} onFetchLeaderboard - "Liderlik Tablosu"
  * @param {() => void} onLogout - rol seçim ekranına gerçekten geri döner
  */
 export default function ProfileScreen({
@@ -30,6 +34,8 @@ export default function ProfileScreen({
   onOpenSetting,
   onOpenAchievements,
   onUpdateName,
+  onUpdateLocation,
+  onFetchLeaderboard,
   onLogout,
   onNavigate,
 }) {
@@ -41,6 +47,52 @@ export default function ProfileScreen({
   const [nameDraft, setNameDraft] = useState(name || '')
   const [savingName, setSavingName] = useState(false)
   const [nameError, setNameError] = useState(null)
+
+  // "Liderlik Tablosu" — mount olduğunda sessizce mevcut durumu çeker
+  // (kullanıcı daha önce konum paylaştıysa doğrudan tabloyu gösterir).
+  const [leaderboard, setLeaderboard] = useState(null)
+  const [sharingLocation, setSharingLocation] = useState(false)
+  const [locationError, setLocationError] = useState(null)
+
+  useEffect(() => {
+    onFetchLeaderboard?.()
+      .then(setLeaderboard)
+      .catch(() => {
+        // sessizce yut — liderlik tablosu ikincil bir özellik, hata
+        // profil ekranının geri kalanını etkilememeli
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const handleShareLocation = () => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setLocationError('Bu cihazda konum servisi desteklenmiyor.')
+      return
+    }
+    setLocationError(null)
+    setSharingLocation(true)
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          await onUpdateLocation?.({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          })
+          const data = await onFetchLeaderboard?.()
+          setLeaderboard(data)
+        } catch (err) {
+          setLocationError(err?.message || 'Konum güncellenemedi, tekrar dene.')
+        } finally {
+          setSharingLocation(false)
+        }
+      },
+      () => {
+        setLocationError('Konum izni reddedildi ya da alınamadı.')
+        setSharingLocation(false)
+      },
+      { enableHighAccuracy: false, timeout: 10000 }
+    )
+  }
 
   const startEditName = () => {
     setNameDraft(name || '')
@@ -186,6 +238,74 @@ export default function ProfileScreen({
           </div>
           <ChevronIcon />
         </button>
+
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs font-semibold text-forest-700/60 uppercase tracking-wide">
+              Liderlik Tablosu
+            </h3>
+            {leaderboard?.city && (
+              <span className="text-[11px] font-semibold text-forest-600">{leaderboard.city}</span>
+            )}
+          </div>
+
+          {!leaderboard?.city ? (
+            <div className="glass-card rounded-2xl p-5 flex flex-col items-center text-center gap-3">
+              <p className="text-xs text-forest-700/60">
+                İlindeki liderlik tablosunu görmek için konumunu paylaş.
+              </p>
+              {locationError && <p className="text-xs text-rose-500 font-medium">{locationError}</p>}
+              <button
+                type="button"
+                onClick={handleShareLocation}
+                disabled={sharingLocation}
+                className="h-10 px-5 rounded-xl bg-forest-600 text-white text-sm font-semibold disabled:opacity-70"
+              >
+                {sharingLocation ? 'Konum alınıyor…' : 'Konumumu Paylaş'}
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2.5">
+              <div className="grid grid-cols-3 gap-2.5">
+                {leaderboard.topThree.map((u, i) => (
+                  <div key={u.id} className="glass-card rounded-2xl p-3 flex flex-col items-center gap-1.5 text-center">
+                    <span
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white ${RANK_BADGE_COLOR[i]}`}
+                    >
+                      {i + 1}
+                    </span>
+                    <p className="text-xs font-semibold text-forest-900 truncate w-full">
+                      {u.name || 'Kullanıcı'}
+                    </p>
+                    <p className="text-[10px] text-forest-700/60">{u.points} puan</p>
+                  </div>
+                ))}
+              </div>
+
+              {leaderboard.me && leaderboard.me.rank > 3 && (
+                <div className="glass-card rounded-2xl px-4 py-3 flex items-center gap-3 bg-forest-100">
+                  <span className="w-7 h-7 rounded-full bg-forest-600 text-white text-xs font-bold flex items-center justify-center shrink-0">
+                    {leaderboard.me.rank}
+                  </span>
+                  <span className="flex-1 text-sm font-medium text-forest-900 truncate">
+                    {leaderboard.me.name || 'Sen'}
+                  </span>
+                  <span className="text-sm font-semibold text-forest-700">{leaderboard.me.points} puan</span>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={handleShareLocation}
+                disabled={sharingLocation}
+                className="text-center text-forest-700/60 text-[11px] font-medium disabled:opacity-70"
+              >
+                {sharingLocation ? 'Konum güncelleniyor…' : 'Konumumu Güncelle'}
+              </button>
+              {locationError && <p className="text-xs text-rose-500 font-medium text-center">{locationError}</p>}
+            </div>
+          )}
+        </section>
 
         <section>
           <h3 className="text-xs font-semibold text-forest-700/60 uppercase tracking-wide mb-3">
