@@ -72,6 +72,13 @@ export const authApi = {
   register: (payload) => request('/auth/register', { method: 'POST', body: payload, auth: false }),
   login: (payload) => request('/auth/login', { method: 'POST', body: payload, auth: false }),
   me: () => request('/auth/me'),
+  // "Şifremi unuttum" akışı 1. adım: e-posta gönderilir, hesap gerçekten
+  // varsa 6 haneli kod e-postaya yollanır (bkz. backend auth/routes.py).
+  forgotPassword: (payload) =>
+    request('/auth/forgot-password', { method: 'POST', body: payload, auth: false }),
+  // "Şifremi unuttum" akışı 2. adım: { email, code, newPassword }
+  resetPassword: (payload) =>
+    request('/auth/reset-password', { method: 'POST', body: payload, auth: false }),
 }
 
 export const medicationsApi = {
@@ -117,4 +124,7 @@ export const usersApi = {
   // Gizlilik ekranındaki "Hesabımı sil" — hesabı ve ilişkili tüm verileri
   // backend'de kalıcı olarak siler. Geri alınamaz.
   deleteAccount: () => request('/users/me', { method: 'DELETE' }),
+  // Ana Sayfa'daki "Çevresel Etkin" kartı — güvenle teslim edilen ilaçlardan
+  // tahmini CO2/su tasarrufu (bkz. backend users/routes.py IMPACT_* sabitleri).
+  impact: () => request('/users/me/impact'),
 }

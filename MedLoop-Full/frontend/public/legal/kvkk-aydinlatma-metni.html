@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>KVKK Aydınlatma Metni - MedLoop</title>
+<style>
+  :root {
+    --forest-900: #0e2e20;
+    --forest-700: #1e6b4c;
+    --forest-600: #237a57;
+    --mint-100: #eaf7f0;
+    --mint-200: #d3eee0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--mint-100);
+    color: var(--forest-900);
+    line-height: 1.6;
+  }
+  .wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 32px 20px 64px;
+  }
+  h1 {
+    font-size: 1.5rem;
+    margin-bottom: 4px;
+  }
+  .updated {
+    font-size: 0.8rem;
+    color: rgba(14, 46, 32, 0.55);
+    margin-bottom: 28px;
+  }
+  h2 {
+    font-size: 1.05rem;
+    margin-top: 28px;
+    margin-bottom: 8px;
+    color: var(--forest-700);
+  }
+  p, li { font-size: 0.92rem; color: rgba(14, 46, 32, 0.85); }
+  ul { padding-left: 20px; }
+  .card {
+    background: white;
+    border: 1px solid var(--mint-200);
+    border-radius: 16px;
+    padding: 24px;
+  }
+  .note {
+    margin-top: 24px;
+    padding: 14px 16px;
+    background: var(--mint-100);
+    border: 1px dashed var(--mint-200);
+    border-radius: 12px;
+    font-size: 0.8rem;
+    color: rgba(14, 46, 32, 0.65);
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>KVKK Aydınlatma Metni</h1>
+    <p class="updated">Son güncelleme: Ağustos 2026</p>
+
+    <div class="card">
+      <p>
+        Bu metin, 6698 sayılı Kişisel Verilerin Korunması Kanunu ("KVKK")
+        madde 10 uyarınca, MedLoop uygulamasını ("Uygulama") kullanırken
+        işlenen kişisel verileriniz hakkında sizi bilgilendirmek amacıyla
+        hazırlanmıştır.
+      </p>
+
+      <h2>1. Veri Sorumlusu</h2>
+      <p>
+        MedLoop, bireylerin son kullanma tarihi geçmiş/geçecek ilaçlarını
+        güvenle eczanelere teslim etmesini sağlayan bir takip uygulamasıdır.
+        Bu Uygulama kapsamında toplanan kişisel verileriniz, veri sorumlusu
+        sıfatıyla MedLoop tarafından işlenmektedir.
+      </p>
+
+      <h2>2. İşlenen Kişisel Veriler</h2>
+      <ul>
+        <li>Kimlik ve iletişim bilgileri: ad soyad (veya eczane adı), e-posta adresi</li>
+        <li>Hesap bilgileri: şifrenizin geri döndürülemez biçimde şifrelenmiş (hash'lenmiş) hâli — düz metin şifreniz hiçbir zaman saklanmaz</li>
+        <li>Uygulama içi veriler: kayıtlı ilaçlarınız (ad, doz, son kullanma tarihi, parti no), teslimat geçmişiniz, bildirim tercihleriniz ve MedLoop puanınız</li>
+        <li>İşlem güvenliği verileri: oturum (JWT) belirteçleri, şifre sıfırlama kodlarının şifrelenmiş hâli</li>
+      </ul>
+
+      <h2>3. Kişisel Verilerin İşlenme Amaçları</h2>
+      <ul>
+        <li>Hesabınızın oluşturulması, giriş yapmanızın sağlanması ve güvenliğinin korunması</li>
+        <li>İlaçlarınızın son kullanma tarihi takibinin yapılması ve size zamanında bildirim gönderilmesi</li>
+        <li>Vatandaş–eczacı arasındaki güvenli QR teslim akışının yürütülmesi</li>
+        <li>Uygulama içi istatistiklerin (ör. çevresel etki, MedLoop puanı) hesaplanması</li>
+      </ul>
+
+      <h2>4. Hukuki Sebep</h2>
+      <p>
+        Kişisel verileriniz; bir sözleşmenin kurulması veya ifasıyla doğrudan
+        ilgili olması (KVKK m.5/2-c) ve veri sorumlusunun meşru menfaati
+        (KVKK m.5/2-f) hukuki sebeplerine dayanılarak işlenmektedir. Kayıt
+        sırasında bu metni onaylamanız, işlemenin şeffaf biçimde bilginize
+        sunulduğunu teyit eder.
+      </p>
+
+      <h2>5. Kişisel Verilerin Saklanması ve Güvenliği</h2>
+      <p>
+        Şifreniz geri döndürülemez biçimde şifrelenir, oturumlarınız JWT
+        (JSON Web Token) ile korunur ve tüm istekler kimlik doğrulamasından
+        geçer. Verileriniz, hesabınız aktif olduğu sürece saklanır.
+      </p>
+
+      <h2>6. Haklarınız (KVKK m.11)</h2>
+      <p>KVKK'nın 11. maddesi uyarınca; kişisel verilerinizin işlenip işlenmediğini öğrenme, işlenmişse buna ilişkin bilgi talep etme, düzeltilmesini veya silinmesini isteme haklarına sahipsiniz. Bu haklarınızın bir kısmını doğrudan Uygulama içinden kullanabilirsiniz:</p>
+      <ul>
+        <li><strong>Verilerimi dışa aktar</strong> (Profil &gt; Gizlilik ve Güvenlik): hesabınızla ilişkili tüm verilerin bir kopyasını JSON olarak indirebilirsiniz.</li>
+        <li><strong>Hesabımı sil</strong> (Profil &gt; Gizlilik ve Güvenlik): hesabınızı ve ilişkili verilerinizi kalıcı olarak silebilirsiniz.</li>
+      </ul>
+
+      <h2>7. İletişim</h2>
+      <p>
+        Haklarınızı kullanmak veya sorularınız için Uygulama içindeki
+        "Yardım ve Destek" bölümünden bize ulaşabilirsiniz.
+      </p>
+    </div>
+
+    <p class="note">
+      Not: Bu metin bir öğrenci/demo projesi için hazırlanmış örnek bir
+      şablondur; gerçek bir ticari üründe yayına alınmadan önce bir hukuk
+      danışmanı tarafından gözden geçirilmesi önerilir.
+    </p>
+  </div>
+</body>
+</html>

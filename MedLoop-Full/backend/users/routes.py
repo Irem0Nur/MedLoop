@@ -6,6 +6,9 @@ MedLoop Backend - Kullanıcı endpoint'leri
   GET    /users/me/export           -> KVKK/GDPR tarzı "verilerimi dışa aktar":
                                         hesapla ilişkili tüm verilerin JSON kopyası
   DELETE /users/me                  -> hesabı ve ilişkili tüm verileri kalıcı siler
+  GET    /users/me/impact           -> vatandaşın teslim ettiği ilaçlardan
+                                        tahmini CO2/su tasarrufu (bkz. aşağıdaki
+                                        IMPACT_* sabitleri)
   POST   /users/me/device-tokens    -> push notification için FCM cihaz token'ı kaydet
                                         { token, platform? } (platform: "android"|"ios"|"web")
 """
@@ -20,6 +23,13 @@ from extensions import db
 from models import DeviceToken, Delivery, Medication, Notification
 
 users_bp = Blueprint("users", __name__, url_prefix="/users")
+
+# "Etki Hesaplama" modülü için varsayılan katsayılar. Bunlar gerçek bilimsel
+# ölçümler DEĞİL — güvenle teslim edilen (ve böylece evsel çöpe/lavaboya
+# karışması önlenen) her bir teslimat için sabit, demo amaçlı bir tahmindir.
+# Gerçek bir sistemde ilaç türü/miktarına göre değişen katsayılar kullanılır.
+IMPACT_CO2_KG_PER_DELIVERY = 0.5
+IMPACT_WATER_LITERS_PER_DELIVERY = 1000
 
 
 @users_bp.route("/me", methods=["GET"])
@@ -112,6 +122,30 @@ def delete_my_account():
     db.session.commit()
 
     return jsonify({"ok": True})
+
+
+@users_bp.route("/me/impact", methods=["GET"])
+@jwt_required()
+def my_impact():
+    """Vatandaşın şimdiye kadar güvenle teslim ettiği (eczacı tarafından
+    onaylanmış) ilaçlardan doğan tahmini çevresel etkiyi döndürür (Ana Sayfa
+    / Profil'deki "Çevresel Etkin" kartı için). Sadece status="confirmed"
+    teslimatlar sayılır — bekleyen/iptal/süresi geçmiş talepler etkiye
+    dahil edilmez. Rakamlar bilimsel bir ölçüm değil, dosya başındaki
+    IMPACT_* sabitleriyle hesaplanan DEMO amaçlı bir tahmindir."""
+    user = get_current_user()
+
+    total_deliveries = Delivery.query.filter_by(citizen_id=user.id, status="confirmed").count()
+
+    return jsonify(
+        {
+            "totalDeliveries": total_deliveries,
+            "co2SavedKg": round(total_deliveries * IMPACT_CO2_KG_PER_DELIVERY, 2),
+            "waterSavedLiters": round(total_deliveries * IMPACT_WATER_LITERS_PER_DELIVERY, 2),
+            "co2PerDeliveryKg": IMPACT_CO2_KG_PER_DELIVERY,
+            "waterPerDeliveryLiters": IMPACT_WATER_LITERS_PER_DELIVERY,
+        }
+    )
 
 
 @users_bp.route("/me/device-tokens", methods=["POST"])

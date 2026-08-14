@@ -13,12 +13,14 @@ const ROLE_LABEL = {
  * @param {string|null} error
  * @param {() => void} onBack - rol seçim ekranına dön
  * @param {() => void} onGoLogin - "Zaten hesabın var mı? Giriş yap"
+ * @param {() => void} onOpenKvkk - KVKK Aydınlatma Metni'ni yeni sekmede açar
  */
-export default function RegisterScreen({ role, onSubmit, loading, error, onBack, onGoLogin }) {
+export default function RegisterScreen({ role, onSubmit, loading, error, onBack, onGoLogin, onOpenKvkk }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [kvkkAccepted, setKvkkAccepted] = useState(false)
   const [formError, setFormError] = useState(null)
 
   const isPharmacist = role === 'pharmacist'
@@ -41,8 +43,18 @@ export default function RegisterScreen({ role, onSubmit, loading, error, onBack,
       setFormError('Şifreler eşleşmiyor.')
       return
     }
+    if (!kvkkAccepted) {
+      setFormError('Devam etmek için KVKK Aydınlatma Metni\'ni onaylaman gerekiyor.')
+      return
+    }
     setFormError(null)
-    onSubmit?.({ email: email.trim().toLowerCase(), password, name: name.trim(), role })
+    onSubmit?.({
+      email: email.trim().toLowerCase(),
+      password,
+      name: name.trim(),
+      role,
+      kvkkAccepted,
+    })
   }
 
   const shownError = formError || error
@@ -116,6 +128,21 @@ export default function RegisterScreen({ role, onSubmit, loading, error, onBack,
             className={inputClass()}
           />
         </Field>
+
+        <label className="flex items-start gap-2.5 mt-1">
+          <input
+            type="checkbox"
+            checked={kvkkAccepted}
+            onChange={(e) => setKvkkAccepted(e.target.checked)}
+            className="mt-0.5 w-4 h-4 rounded border-mint-200 text-forest-600 shrink-0"
+          />
+          <span className="text-xs text-forest-700/70 leading-snug">
+            <button type="button" onClick={onOpenKvkk} className="text-forest-600 font-semibold underline underline-offset-2">
+              KVKK Aydınlatma Metni
+            </button>
+            'ni okudum, kişisel verilerimin belirtilen amaçlarla işlenmesini kabul ediyorum.
+          </span>
+        </label>
 
         {shownError && (
           <p className="text-xs text-rose-500 font-medium -mt-1">{shownError}</p>

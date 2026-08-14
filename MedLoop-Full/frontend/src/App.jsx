@@ -4,6 +4,7 @@ import OnboardingScreen from './screens/OnboardingScreen.jsx'
 import RoleSelectionScreen from './screens/RoleSelectionScreen.jsx'
 import LoginScreen from './screens/LoginScreen.jsx'
 import RegisterScreen from './screens/RegisterScreen.jsx'
+import ForgotPasswordScreen from './screens/ForgotPasswordScreen.jsx'
 import HomeScreen from './screens/HomeScreen.jsx'
 import ScanScreen from './screens/ScanScreen.jsx'
 import AddMedicineScreen from './screens/AddMedicineScreen.jsx'
@@ -83,8 +84,6 @@ export default function App() {
   const [authError, setAuthError] = useState(null)
   // RoleSelectionScreen'de seçilen rol; RegisterScreen'e taşınır.
   const [pendingRole, setPendingRole] = useState('citizen')
-  // RoleSelectionScreen'de seçilen rol; RegisterScreen'e taşınır.
-  const [pendingRole, setPendingRole] = useState('citizen')
   // Tanıtım ekranları (Onboarding) sadece kullanıcının cihazında hiç
   // görülmediyse gösterilir — bir kez tamamlandıktan sonra localStorage'a
   // işaretlenir, sonraki açılışlarda splash'tan direkt role/login'e geçilir.
@@ -98,6 +97,8 @@ export default function App() {
   const [deliveredCount, setDeliveredCount] = useState(0)
   const [notifications, setNotifications] = useState([])
   const [notificationsLoading, setNotificationsLoading] = useState(false)
+  // Ana Sayfa'daki "Çevresel Etkin" kartı için (GET /users/me/impact).
+  const [impact, setImpact] = useState({ totalDeliveries: 0, co2SavedKg: 0, waterSavedLiters: 0 })
 
   const [pendingScan, setPendingScan] = useState(null)
   const [activeMedicineId, setActiveMedicineId] = useState(null)
@@ -241,12 +242,22 @@ export default function App() {
     }
   }
 
+  const refreshImpact = async () => {
+    try {
+      const data = await usersApi.impact()
+      setImpact(data)
+    } catch {
+      // sessizce yut
+    }
+  }
+
   // Oturum kurulunca ilgili verileri çek.
   useEffect(() => {
     if (!authUser) return
     refreshMedications()
     refreshNotifications()
     if (authUser.role === 'pharmacist') refreshDeliveries()
+    else refreshImpact()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUser?.id])
 
@@ -306,6 +317,13 @@ export default function App() {
     }
   }
 
+  // "Şifremi unuttum" akışı: ForgotPasswordScreen kendi loading/hata
+  // durumunu yönetir (bu yüzden burada try/catch yok — hata fırlarsa ekran
+  // yakalar). Backend her durumda aynı genel başarı mesajını döner (hesap
+  // var/yok bilgisini sızdırmamak için).
+  const handleForgotPasswordRequest = (email) => authApi.forgotPassword({ email })
+  const handleResetPassword = (payload) => authApi.resetPassword(payload)
+
   // Gerçek çıkış: token'ı ve tüm oturuma özel verileri temizler, rol seçim
   // ekranına döner.
   const handleLogout = () => {
@@ -332,6 +350,7 @@ export default function App() {
       refreshMedications()
       refreshNotifications()
       refreshUser()
+      refreshImpact()
     }
   }
 
@@ -350,6 +369,9 @@ export default function App() {
   }
   const openTerms = () => {
     window.open('/legal/terms-of-use.html', '_blank', 'noopener,noreferrer')
+  }
+  const openKvkk = () => {
+    window.open('/legal/kvkk-aydinlatma-metni.html', '_blank', 'noopener,noreferrer')
   }
 
   // Ana sayfadaki Hızlı Erişim kartları — bottom nav'daki sekmelerle
@@ -568,6 +590,10 @@ export default function App() {
           setAuthError(null)
           setScreen('role')
         }}
+        onForgotPassword={() => {
+          setAuthError(null)
+          setScreen('forgot-password')
+        }}
       />
     )
   }
@@ -587,6 +613,17 @@ export default function App() {
           setAuthError(null)
           setScreen('login')
         }}
+        onOpenKvkk={openKvkk}
+      />
+    )
+  }
+
+  if (screen === 'forgot-password') {
+    return (
+      <ForgotPasswordScreen
+        onRequestCode={handleForgotPasswordRequest}
+        onResetPassword={handleResetPassword}
+        onBack={() => setScreen('login')}
       />
     )
   }
@@ -911,9 +948,10 @@ export default function App() {
   return (
     <HomeScreen
       medicines={medicines}
-      Name={authUser?.name}
+      name={authUser?.name}
       points={authUser?.points ?? 0}
       unreadCount={unreadCount}
+      impact={impact}
       onScan={() => setScreen('scan')}
       onNavigate={navigateTo}
       onQuickAccess={handleQuickAccess}

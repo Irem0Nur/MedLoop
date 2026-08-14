@@ -65,6 +65,21 @@ class Config:
     # yine de normal şekilde çalışmaya devam eder.
     FIREBASE_CREDENTIALS_PATH = os.environ.get("FIREBASE_CREDENTIALS_PATH", "").strip()
 
+    # --- E-posta (SMTP) - "Şifremi unuttum" akışı için ---
+    # Ayarlanmazsa e-posta gönderimi sessizce no-op olur; sıfırlama kodu
+    # sadece sunucu logunda görünür (bkz. services/email.py). Gmail
+    # kullanıyorsan SMTP_USER kendi adresin, SMTP_PASSWORD ise normal şifren
+    # DEĞİL, bir "Uygulama Şifresi" (App Password) olmalı.
+    SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()
+    SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+    SMTP_USER = os.environ.get("SMTP_USER", "").strip()
+    SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "").strip()
+    SMTP_FROM = os.environ.get("SMTP_FROM", "").strip()
+    # Şifre sıfırlama kodunun geçerlilik süresi (dakika)
+    PASSWORD_RESET_CODE_EXPIRES_MINUTES = int(
+        os.environ.get("PASSWORD_RESET_CODE_EXPIRES_MINUTES", "15")
+    )
+
     # --- CORS ---
     # Prod'da bunu frontend domain'inle sınırlamak isteyebilirsin.
     CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "*")

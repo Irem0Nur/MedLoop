@@ -7,8 +7,9 @@ import Logo from '../components/Logo.jsx'
  * @param {string|null} error - backend'den ya da doğrulamadan gelen hata mesajı
  * @param {() => void} onBack - rol seçim ekranına dön
  * @param {() => void} onGoRegister - "Hesabın yok mu? Kayıt ol"
+ * @param {() => void} onForgotPassword - "Şifremi unuttum?"
  */
-export default function LoginScreen({ onSubmit, loading, error, onBack, onGoRegister }) {
+export default function LoginScreen({ onSubmit, loading, error, onBack, onGoRegister, onForgotPassword }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [formError, setFormError] = useState(null)
@@ -72,6 +73,14 @@ export default function LoginScreen({ onSubmit, loading, error, onBack, onGoRegi
         {shownError && (
           <p className="text-xs text-rose-500 font-medium -mt-1">{shownError}</p>
         )}
+
+        <button
+          type="button"
+          onClick={onForgotPassword}
+          className="-mt-1 text-right text-xs font-semibold text-forest-600"
+        >
+          Şifremi unuttum
+        </button>
 
         <button
           type="submit"

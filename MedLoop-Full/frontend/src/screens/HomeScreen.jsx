@@ -12,9 +12,12 @@ const QUICK_ACCESS = [
 /**
  * @param {number} points - gerçek MedLoop puanı (App.jsx'te ilaç ekledikçe artar)
  * @param {number} unreadCount - okunmamış bildirim sayısı (zil rozetinde gösterilir)
+ * @param {{totalDeliveries: number, co2SavedKg: number, waterSavedLiters: number}} [impact] -
+ *   backend'deki GET /users/me/impact'ten gelen, güvenle teslim edilen ilaçların
+ *   tahmini çevresel etkisi (bkz. "Çevresel Etkin" kartı).
  * @param {(key: string) => void} onQuickAccess - Hızlı Erişim kartlarından birine dokunulunca
  */
-export default function HomeScreen({ name, medicines, points, unreadCount, onScan, onNavigate, onQuickAccess }) {
+export default function HomeScreen({ name, medicines, points, unreadCount, impact, onScan, onNavigate, onQuickAccess }) {
   const soonCount = medicines.filter((m) => getExpiryStatus(m.expiryDate).key === 'soon').length
 
   return (
@@ -62,6 +65,32 @@ export default function HomeScreen({ name, medicines, points, unreadCount, onSca
             <ScanIcon /> İlaç Tara
           </button>
         </div>
+
+        <section className="px-5 mt-5">
+          <div className="glass-card rounded-3xl p-5">
+            <div className="flex items-center gap-1.5">
+              <span className="text-forest-700"><LeafIcon /></span>
+              <p className="text-[11px] font-semibold text-forest-700/60 uppercase tracking-wide">
+                Çevresel Etkin
+              </p>
+            </div>
+            <p className="font-display font-bold text-forest-900 text-lg mt-0.5">
+              {impact?.totalDeliveries > 0
+                ? `${impact.totalDeliveries} güvenli teslimat`
+                : 'İlk teslimatını bekliyoruz'}
+            </p>
+            {impact?.totalDeliveries > 0 ? (
+              <div className="grid grid-cols-2 gap-3 mt-4">
+                <StatBox value={`${impact.co2SavedKg} kg`} label="CO2 Tasarrufu" />
+                <StatBox value={`${impact.waterSavedLiters} L`} label="Su Koruması" />
+              </div>
+            ) : (
+              <p className="text-xs text-forest-700/60 mt-2">
+                İlaçlarını eczaneye güvenle teslim ettikçe tahmini CO2 ve su tasarrufun burada birikecek.
+              </p>
+            )}
+          </div>
+        </section>
 
         <section className="px-5 mt-8">
           <h2 className="text-xs font-semibold text-forest-700/60 uppercase tracking-wide mb-3">
@@ -129,6 +158,14 @@ function BellIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" />
+    </svg>
+  )
+}
+function LeafIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M11 20A7 7 0 0 1 4 13V7a1 1 0 0 1 1-1h6a7 7 0 0 1 7 7 7 7 0 0 1-7 7Z" />
+      <path d="M11 20v-9" />
     </svg>
   )
 }

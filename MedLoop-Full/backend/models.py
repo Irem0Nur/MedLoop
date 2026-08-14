@@ -1,7 +1,8 @@
 """
 MedLoop Backend - Veritabanı Modelleri
 ========================================
-SQLAlchemy modelleri: User, Medication, Notification, DeviceToken.
+SQLAlchemy modelleri: User, Medication, Notification, DeviceToken,
+PasswordResetToken.
 
 Notification.type alanı şu değerlerden birini alır:
   - "medication_added"     : İlaç başarıyla eklendiğinde
@@ -45,6 +46,9 @@ class User(db.Model):
     )
     device_tokens = db.relationship(
         "DeviceToken", backref="user", lazy=True, cascade="all, delete-orphan"
+    )
+    password_reset_tokens = db.relationship(
+        "PasswordResetToken", backref="user", lazy=True, cascade="all, delete-orphan"
     )
 
     def to_dict(self):
@@ -141,6 +145,24 @@ class DeviceToken(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
     token = db.Column(db.String(512), unique=True, nullable=False)
     platform = db.Column(db.String(20), nullable=True)  # "android" | "ios" | "web"
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+
+
+class PasswordResetToken(db.Model):
+    """"Şifremi unuttum" akışı için tek kullanımlık 6 haneli kod.
+
+    Kod düz metin olarak SAKLANMAZ — password_hash gibi werkzeug ile
+    hash'lenir (bkz. auth/routes.py). Bir kullanıcı için birden fazla
+    kayıt olabilir (her istek yenisini üretir); yeni bir kod üretilirken
+    o kullanıcının önceki kullanılmamış kodları silinir."""
+
+    __tablename__ = "password_reset_tokens"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    code_hash = db.Column(db.String(255), nullable=False)
+    expires_at = db.Column(db.DateTime(timezone=True), nullable=False)
+    used_at = db.Column(db.DateTime(timezone=True), nullable=True)
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
 
 
